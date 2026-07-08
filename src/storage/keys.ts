@@ -7,7 +7,7 @@ const SCHEMA_VERSION = 'v1';
 const PREFIX = `@repcount/${SCHEMA_VERSION}`;
 
 export const StorageKeys = {
-  /** User-managed toggles (vibration, sound, dark mode). */
+  /** User-managed preferences (theme, vibration, sound, units). */
   settings: `${PREFIX}/settings`,
   /** Internal, non-critical preferences. */
   preferences: `${PREFIX}/preferences`,

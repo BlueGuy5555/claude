@@ -16,6 +16,8 @@ interface SettingsContextValue {
   isReady: boolean;
   /** Update a single setting and persist the whole object. */
   updateSetting: <K extends keyof Settings>(key: K, value: Settings[K]) => void;
+  /** Restore every setting to its default and persist. */
+  resetSettings: () => void;
 }
 
 const SettingsContext = createContext<SettingsContextValue | undefined>(undefined);
@@ -46,9 +48,14 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
     });
   }, []);
 
+  const resetSettings = useCallback(() => {
+    setSettings(DEFAULT_SETTINGS);
+    void saveSettings(DEFAULT_SETTINGS);
+  }, []);
+
   const value = useMemo<SettingsContextValue>(
-    () => ({ settings, isReady, updateSetting }),
-    [settings, isReady, updateSetting],
+    () => ({ settings, isReady, updateSetting, resetSettings }),
+    [settings, isReady, updateSetting, resetSettings],
   );
 
   return <SettingsContext.Provider value={value}>{children}</SettingsContext.Provider>;

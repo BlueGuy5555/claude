@@ -1,7 +1,7 @@
 import { useFocusEffect } from '@react-navigation/native';
 import { useCallback, useState } from 'react';
 
-import { clearHistory, loadHistory } from '@/storage';
+import { clearHistory, deleteSession, loadHistory } from '@/storage';
 import type { WorkoutSession } from '@/types';
 
 interface UseWorkoutHistory {
@@ -9,6 +9,8 @@ interface UseWorkoutHistory {
   isLoading: boolean;
   /** Re-read history from storage. */
   refresh: () => Promise<void>;
+  /** Delete a single session by id and update local state. */
+  remove: (id: string) => Promise<void>;
   /** Wipe all stored history and update local state. */
   clear: () => Promise<void>;
 }
@@ -25,6 +27,11 @@ export function useWorkoutHistory(): UseWorkoutHistory {
     const stored = await loadHistory();
     setHistory(stored);
     setIsLoading(false);
+  }, []);
+
+  const remove = useCallback(async (id: string) => {
+    const next = await deleteSession(id);
+    setHistory(next);
   }, []);
 
   const clear = useCallback(async () => {
@@ -49,5 +56,5 @@ export function useWorkoutHistory(): UseWorkoutHistory {
     }, []),
   );
 
-  return { history, isLoading, refresh, clear };
+  return { history, isLoading, refresh, remove, clear };
 }

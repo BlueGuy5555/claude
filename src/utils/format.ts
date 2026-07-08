@@ -26,3 +26,21 @@ export function formatClock(totalSeconds: number): string {
 export function formatNumber(value: number): string {
   return Math.round(value).toLocaleString('en-US');
 }
+
+/** Kilojoules per kilocalorie. */
+const KJ_PER_KCAL = 4.184;
+
+/**
+ * Format an energy value (given in kilocalories) for display. Metric users see
+ * kilojoules — the unit used on nutrition labels across much of the world —
+ * while imperial users see kilocalories ("Cal").
+ */
+export function formatEnergy(kcal: number, units: 'metric' | 'imperial'): string {
+  if (units === 'metric') return `${formatNumber(kcal * KJ_PER_KCAL)} kJ`;
+  return `${formatNumber(kcal)} kcal`;
+}
+
+/** The short energy unit label for the given measurement system. */
+export function energyUnitLabel(units: 'metric' | 'imperial'): string {
+  return units === 'metric' ? 'kJ' : 'kcal';
+}

@@ -1,8 +1,9 @@
 import { Ionicons } from '@expo/vector-icons';
 import { CameraView, useCameraPermissions, type CameraType } from 'expo-camera';
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, Pressable, StyleSheet, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import Animated, {
+  FadeIn,
   useAnimatedStyle,
   useSharedValue,
   withRepeat,
@@ -10,26 +11,35 @@ import Animated, {
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { AppText, Button, EmptyState, ScreenContainer } from '@/components';
-import { useHaptics } from '@/hooks';
+import {
+  AppText,
+  Button,
+  EmptyState,
+  ExerciseCard,
+  LoadingSpinner,
+  RepCounter,
+  ScreenContainer,
+  Timer,
+  WorkoutSummary,
+} from '@/components';
+import { EXERCISES } from '@/constants';
+import { useWorkoutSession } from '@/hooks';
 import type { RootStackScreenProps } from '@/navigation';
 import { useTheme } from '@/theme';
 
-/**
- * Live camera preview screen. Pose detection is intentionally NOT implemented
- * here — the screen only proves out camera permissions + preview and shows a
- * "coming soon" banner. No TensorFlow / ML dependencies are imported.
- */
 export function WorkoutSessionScreen({
   navigation,
+  route,
 }: RootStackScreenProps<'WorkoutSession'>) {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
-  const { impact } = useHaptics();
   const [permission, requestPermission] = useCameraPermissions();
   const [facing, setFacing] = useState<CameraType>('back');
 
-  // Gently pulsing "recording" style dot for the coming-soon banner.
+  const session = useWorkoutSession({ resume: route.params?.resume });
+  const isRunning = session.status === 'running';
+
+  // Pulsing dot for the "coming soon" banner.
   const pulse = useSharedValue(0);
   useEffect(() => {
     pulse.value = withRepeat(withTiming(1, { duration: 900 }), -1, true);
@@ -42,8 +52,8 @@ export function WorkoutSessionScreen({
   // Permission still resolving.
   if (!permission) {
     return (
-      <ScreenContainer scroll={false} style={styles.centered}>
-        <ActivityIndicator color={theme.colors.primary} />
+      <ScreenContainer scroll={false}>
+        <LoadingSpinner label="Preparing camera…" />
       </ScreenContainer>
     );
   }
@@ -63,17 +73,9 @@ export function WorkoutSessionScreen({
           action={
             <View style={styles.permissionActions}>
               {permission.canAskAgain ? (
-                <Button
-                  label="Grant camera access"
-                  icon="camera"
-                  onPress={requestPermission}
-                />
+                <Button label="Grant camera access" icon="camera" onPress={requestPermission} />
               ) : null}
-              <Button
-                label="Go back"
-                variant="ghost"
-                onPress={() => navigation.goBack()}
-              />
+              <Button label="Go back" variant="ghost" onPress={() => navigation.goBack()} />
             </View>
           }
         />
@@ -81,46 +83,130 @@ export function WorkoutSessionScreen({
     );
   }
 
-  // Permission granted — show the live preview with an overlay.
+  // Finished — show the saved summary.
+  if (session.status === 'finished' && session.savedSession) {
+    const saved = session.savedSession;
+    return (
+      <ScreenContainer>
+        <View style={styles.summaryHeader}>
+          <Ionicons name="checkmark-circle" size={56} color={theme.colors.success} />
+          <AppText variant="title" center style={{ marginTop: theme.spacing.md }}>
+            Workout complete
+          </AppText>
+          <AppText variant="body" color="textSecondary" center style={{ marginTop: 4 }}>
+            Saved to your history.
+          </AppText>
+        </View>
+
+        <View style={{ marginTop: theme.spacing.xl }}>
+          <WorkoutSummary session={saved} />
+        </View>
+
+        <View style={{ marginTop: theme.spacing.xl, gap: theme.spacing.md }}>
+          <Button label="Done" icon="home-outline" onPress={() => navigation.navigate('Home')} />
+          <Button label="Start another" variant="secondary" onPress={session.start} />
+        </View>
+      </ScreenContainer>
+    );
+  }
+
+  // Active experience (idle / running / paused) over the camera preview.
   return (
     <View style={styles.flex}>
       <CameraView style={StyleSheet.absoluteFill} facing={facing} />
+      <View style={[StyleSheet.absoluteFill, styles.scrim]} pointerEvents="none" />
 
-      {/* Top scrim + controls */}
-      <View style={[styles.topBar, { paddingTop: insets.top + theme.spacing.sm }]}>
-        <OverlayButton
-          icon="chevron-back"
-          onPress={() => {
-            impact('light');
-            navigation.goBack();
-          }}
-        />
-        <AppText variant="subtitle" color="onOverlay">
-          Workout
-        </AppText>
-        <OverlayButton
-          icon="camera-reverse-outline"
-          onPress={() => {
-            impact('light');
-            setFacing((prev) => (prev === 'back' ? 'front' : 'back'));
-          }}
-        />
-      </View>
-
-      {/* Coming-soon banner */}
-      <View
-        style={[styles.banner, { bottom: insets.bottom + theme.spacing.xxl }]}
-        pointerEvents="none"
-      >
-        <View style={styles.bannerPill}>
-          <Animated.View style={[styles.dot, dotStyle]} />
-          <AppText variant="bodyStrong" color="onOverlay">
-            AI Pose Detection Coming Soon
+      <View style={[styles.overlay, { paddingTop: insets.top + 8, paddingBottom: insets.bottom + 12 }]}>
+        {/* Top bar */}
+        <View style={styles.topBar}>
+          <OverlayButton icon="chevron-back" onPress={() => navigation.goBack()} />
+          <AppText variant="subtitle" color="onOverlay">
+            Workout
           </AppText>
+          <OverlayButton
+            icon="camera-reverse-outline"
+            onPress={() => setFacing((prev) => (prev === 'back' ? 'front' : 'back'))}
+          />
         </View>
-        <AppText variant="caption" color="onOverlay" center style={styles.bannerHint}>
-          Automatic rep counting arrives in a future update.
-        </AppText>
+
+        {/* Center: counter + timer + coming-soon banner */}
+        <View style={styles.center}>
+          <View style={styles.bannerPill}>
+            <Animated.View style={[styles.dot, dotStyle]} />
+            <AppText variant="caption" color="onOverlay" style={styles.bannerText}>
+              AI Pose Detection Coming Soon
+            </AppText>
+          </View>
+
+          <RepCounter
+            reps={session.currentReps}
+            caption={isRunning ? 'Tap to add a rep · simulated' : undefined}
+            onPress={isRunning ? () => session.addRep() : undefined}
+            onOverlay
+            style={{ marginTop: theme.spacing.xl }}
+          />
+
+          <View style={{ marginTop: theme.spacing.md }}>
+            <Timer seconds={session.elapsedSec} running={isRunning} onOverlay />
+          </View>
+        </View>
+
+        {/* Bottom: exercise selector + controls */}
+        <View>
+          <AppText variant="caption" color="onOverlay" style={styles.selectorLabel}>
+            EXERCISE
+          </AppText>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.selector}
+          >
+            {EXERCISES.map((exercise) => (
+              <ExerciseCard
+                key={exercise.id}
+                exercise={exercise}
+                compact
+                selected={exercise.id === session.selectedExerciseId}
+                onPress={() => session.selectExercise(exercise.id)}
+              />
+            ))}
+          </ScrollView>
+
+          <Animated.View entering={FadeIn.duration(200)} style={styles.controls}>
+            {session.status === 'idle' ? (
+              <Button label="Start" icon="play" size="lg" onPress={session.start} />
+            ) : (
+              <View style={styles.controlRow}>
+                {isRunning ? (
+                  <Button
+                    label="Pause"
+                    icon="pause"
+                    variant="secondary"
+                    size="lg"
+                    onPress={session.pause}
+                    style={styles.controlButton}
+                  />
+                ) : (
+                  <Button
+                    label="Resume"
+                    icon="play"
+                    variant="secondary"
+                    size="lg"
+                    onPress={session.resume}
+                    style={styles.controlButton}
+                  />
+                )}
+                <Button
+                  label="Finish"
+                  icon="flag"
+                  size="lg"
+                  onPress={() => void session.finish()}
+                  style={styles.controlButton}
+                />
+              </View>
+            )}
+          </Animated.View>
+        </View>
       </View>
     </View>
   );
@@ -147,17 +233,12 @@ function OverlayButton({
 
 const styles = StyleSheet.create({
   flex: { flex: 1, backgroundColor: '#000' },
-  centered: { alignItems: 'center', justifyContent: 'center' },
+  scrim: { backgroundColor: 'rgba(0,0,0,0.35)' },
+  overlay: { flex: 1, justifyContent: 'space-between', paddingHorizontal: 20 },
   topBar: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingBottom: 12,
   },
   overlayButton: {
     width: 44,
@@ -165,25 +246,25 @@ const styles = StyleSheet.create({
     borderRadius: 22,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(0,0,0,0.35)',
+    backgroundColor: 'rgba(0,0,0,0.4)',
   },
   pressed: { opacity: 0.7 },
-  banner: { position: 'absolute', left: 24, right: 24, alignItems: 'center' },
+  center: { alignItems: 'center' },
   bannerPill: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 18,
-    paddingVertical: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
     borderRadius: 999,
-    backgroundColor: 'rgba(0,0,0,0.55)',
+    backgroundColor: 'rgba(0,0,0,0.5)',
   },
-  dot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    backgroundColor: '#FF6369',
-    marginRight: 10,
-  },
-  bannerHint: { marginTop: 10, opacity: 0.85 },
+  dot: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#FF6369', marginRight: 8 },
+  bannerText: { fontWeight: '600' },
+  selectorLabel: { letterSpacing: 1, marginBottom: 8, opacity: 0.9 },
+  selector: { gap: 10, paddingRight: 4 },
+  controls: { marginTop: 16 },
+  controlRow: { flexDirection: 'row', gap: 12 },
+  controlButton: { flex: 1 },
+  summaryHeader: { alignItems: 'center', marginTop: 16 },
   permissionActions: { alignSelf: 'stretch', gap: 12 },
 });
