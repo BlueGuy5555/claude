@@ -14,6 +14,7 @@ import {
   SettingsScreen,
   StatisticsScreen,
   WorkoutSessionScreen,
+  WorkoutSummaryScreen,
 } from '@/screens';
 import { useTheme } from '@/theme';
 
@@ -66,6 +67,11 @@ export function RootNavigator() {
           name="WorkoutSession"
           component={WorkoutSessionScreen}
           options={{ headerShown: false, animation: 'slide_from_bottom' }}
+        />
+        <Stack.Screen
+          name="WorkoutSummary"
+          component={WorkoutSummaryScreen}
+          options={{ headerShown: false, animation: 'fade', gestureEnabled: false }}
         />
         <Stack.Screen name="History" component={HistoryScreen} />
         <Stack.Screen name="Statistics" component={StatisticsScreen} />

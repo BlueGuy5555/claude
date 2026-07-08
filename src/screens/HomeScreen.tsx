@@ -8,8 +8,6 @@ import { APP } from '@/constants';
 import type { RootStackScreenProps } from '@/navigation';
 import { useTheme } from '@/theme';
 
-type NavProp = RootStackScreenProps<'Home'>['navigation'];
-
 interface ActionTileProps {
   icon: React.ComponentProps<typeof Ionicons>['name'];
   title: string;

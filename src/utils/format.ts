@@ -26,3 +26,13 @@ export function formatClock(totalSeconds: number): string {
 export function formatNumber(value: number): string {
   return Math.round(value).toLocaleString('en-US');
 }
+
+/** Format a calorie value, e.g. 42.4 -> "42 kcal". */
+export function formatCalories(kcal: number): string {
+  return `${Math.round(kcal)} kcal`;
+}
+
+/** Format a `[0, 1]` confidence as a percentage, e.g. 0.83 -> "83%". */
+export function formatPercent(value: number): string {
+  return `${Math.round(Math.min(1, Math.max(0, value)) * 100)}%`;
+}

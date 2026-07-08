@@ -4,7 +4,16 @@ import { StyleSheet, Text, type TextProps, type TextStyle } from 'react-native';
 import { useTheme } from '@/theme';
 import type { TextVariant } from '@/theme';
 
-type ColorKey = 'text' | 'textSecondary' | 'textMuted' | 'primary' | 'onPrimary' | 'danger' | 'success' | 'onOverlay';
+type ColorKey =
+  | 'text'
+  | 'textSecondary'
+  | 'textMuted'
+  | 'primary'
+  | 'onPrimary'
+  | 'accent'
+  | 'danger'
+  | 'success'
+  | 'onOverlay';
 
 interface AppTextProps extends TextProps {
   variant?: TextVariant;
