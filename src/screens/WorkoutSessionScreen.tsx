@@ -1,24 +1,28 @@
 import { Ionicons } from '@expo/vector-icons';
-import { CameraView, useCameraPermissions, type CameraType } from 'expo-camera';
-import React, { useEffect, useState } from 'react';
+import { useIsFocused } from '@react-navigation/native';
+import React, { useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, View } from 'react-native';
-import Animated, {
-  useAnimatedStyle,
-  useSharedValue,
-  withRepeat,
-  withTiming,
-} from 'react-native-reanimated';
+import {
+  Camera,
+  useCameraDevice,
+  useCameraPermission,
+  type CameraRuntimeError,
+} from 'react-native-vision-camera';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AppText, Button, EmptyState, ScreenContainer } from '@/components';
 import { useHaptics } from '@/hooks';
 import type { RootStackScreenProps } from '@/navigation';
+import { usePoseDetection } from '@/services/pose';
 import { useTheme } from '@/theme';
 
 /**
- * Live camera preview screen. Pose detection is intentionally NOT implemented
- * here — the screen only proves out camera permissions + preview and shows a
- * "coming soon" banner. No TensorFlow / ML dependencies are imported.
+ * Live workout screen with real on-device pose detection.
+ *
+ * The camera + skeleton rendering is delegated entirely to `usePoseDetection`
+ * (see `services/pose`). This screen only owns the camera *chrome*: permission,
+ * device selection, and the loading / error / "no person" / FPS overlays. It
+ * never touches TensorFlow, Skia or the resize plugin directly.
  */
 export function WorkoutSessionScreen({
   navigation,
@@ -26,54 +30,36 @@ export function WorkoutSessionScreen({
   const theme = useTheme();
   const insets = useSafeAreaInsets();
   const { impact } = useHaptics();
-  const [permission, requestPermission] = useCameraPermissions();
-  const [facing, setFacing] = useState<CameraType>('back');
+  const isFocused = useIsFocused();
 
-  // Gently pulsing "recording" style dot for the coming-soon banner.
-  const pulse = useSharedValue(0);
-  useEffect(() => {
-    pulse.value = withRepeat(withTiming(1, { duration: 900 }), -1, true);
-  }, [pulse]);
-  const dotStyle = useAnimatedStyle(() => ({
-    opacity: 0.4 + pulse.value * 0.6,
-    transform: [{ scale: 0.85 + pulse.value * 0.4 }],
-  }));
+  const { hasPermission, requestPermission } = useCameraPermission();
+  const [facing, setFacing] = useState<'back' | 'front'>('back');
+  const device = useCameraDevice(facing);
+  const [cameraError, setCameraError] = useState<string | null>(null);
+  const [showDebug, setShowDebug] = useState(false);
 
-  // Permission still resolving.
-  if (!permission) {
-    return (
-      <ScreenContainer scroll={false} style={styles.centered}>
-        <ActivityIndicator color={theme.colors.primary} />
-      </ScreenContainer>
-    );
-  }
+  // Streaming only while focused + permitted + a camera exists. Losing focus
+  // pauses the camera and releases smoothing state (see the hook).
+  const isActive = isFocused && hasPermission && device != null && cameraError == null;
 
-  // Permission not yet granted — explain why and ask.
-  if (!permission.granted) {
+  const pose = usePoseDetection({
+    isActive,
+    mirror: facing === 'front',
+    skeletonStyle: { jointColor: theme.colors.primary },
+  });
+
+  // Camera permission not granted — explain why and offer to request it.
+  if (!hasPermission) {
     return (
       <ScreenContainer scroll={false}>
         <EmptyState
           icon="camera-outline"
           title="Camera access needed"
-          message={
-            permission.canAskAgain
-              ? 'RepCount shows a live preview so future updates can count your reps on-device. The camera feed never leaves your phone.'
-              : 'Camera access is disabled. Enable it in your device Settings to use workout sessions.'
-          }
+          message="RepCount analyzes your movement on-device to count reps. The camera feed is processed locally and never leaves your phone."
           action={
-            <View style={styles.permissionActions}>
-              {permission.canAskAgain ? (
-                <Button
-                  label="Grant camera access"
-                  icon="camera"
-                  onPress={requestPermission}
-                />
-              ) : null}
-              <Button
-                label="Go back"
-                variant="ghost"
-                onPress={() => navigation.goBack()}
-              />
+            <View style={styles.actions}>
+              <Button label="Grant camera access" icon="camera" onPress={requestPermission} />
+              <Button label="Go back" variant="ghost" onPress={() => navigation.goBack()} />
             </View>
           }
         />
@@ -81,10 +67,30 @@ export function WorkoutSessionScreen({
     );
   }
 
-  // Permission granted — show the live preview with an overlay.
+  // No usable camera (e.g. a simulator without a camera device).
+  if (device == null) {
+    return (
+      <ScreenContainer scroll={false}>
+        <EmptyState
+          icon="videocam-off-outline"
+          title="No camera available"
+          message="This device doesn't expose a camera we can use for pose detection."
+          action={<Button label="Go back" variant="ghost" onPress={() => navigation.goBack()} />}
+        />
+      </ScreenContainer>
+    );
+  }
+
   return (
     <View style={styles.flex}>
-      <CameraView style={StyleSheet.absoluteFill} facing={facing} />
+      <Camera
+        style={StyleSheet.absoluteFill}
+        device={device}
+        isActive={isActive}
+        frameProcessor={pose.frameProcessor}
+        resizeMode="cover"
+        onError={(error: CameraRuntimeError) => setCameraError(error.message)}
+      />
 
       {/* Top scrim + controls */}
       <View style={[styles.topBar, { paddingTop: insets.top + theme.spacing.sm }]}>
@@ -98,30 +104,99 @@ export function WorkoutSessionScreen({
         <AppText variant="subtitle" color="onOverlay">
           Workout
         </AppText>
-        <OverlayButton
-          icon="camera-reverse-outline"
-          onPress={() => {
-            impact('light');
-            setFacing((prev) => (prev === 'back' ? 'front' : 'back'));
-          }}
-        />
+        <View style={styles.topRight}>
+          <OverlayButton
+            icon="bug-outline"
+            active={showDebug}
+            onPress={() => setShowDebug((prev) => !prev)}
+          />
+          <OverlayButton
+            icon="camera-reverse-outline"
+            onPress={() => {
+              impact('light');
+              setFacing((prev) => (prev === 'back' ? 'front' : 'back'));
+            }}
+          />
+        </View>
       </View>
 
-      {/* Coming-soon banner */}
-      <View
-        style={[styles.banner, { bottom: insets.bottom + theme.spacing.xxl }]}
-        pointerEvents="none"
-      >
-        <View style={styles.bannerPill}>
-          <Animated.View style={[styles.dot, dotStyle]} />
-          <AppText variant="bodyStrong" color="onOverlay">
-            AI Pose Detection Coming Soon
+      {/* FPS debug overlay (optional) */}
+      {showDebug ? (
+        <View style={[styles.debug, { top: insets.top + 56 }]} pointerEvents="none">
+          <AppText variant="caption" color="onOverlay">
+            {pose.fps} FPS · {pose.delegate ?? '—'}
           </AppText>
         </View>
-        <AppText variant="caption" color="onOverlay" center style={styles.bannerHint}>
-          Automatic rep counting arrives in a future update.
-        </AppText>
-      </View>
+      ) : null}
+
+      {/* Camera failed at runtime */}
+      {cameraError ? (
+        <CenterOverlay>
+          <EmptyState
+            icon="alert-circle-outline"
+            title="Camera error"
+            message={cameraError}
+            action={
+              <Button label="Try again" icon="refresh" onPress={() => setCameraError(null)} />
+            }
+          />
+        </CenterOverlay>
+      ) : pose.status === 'error' ? (
+        <CenterOverlay>
+          <EmptyState
+            icon="alert-circle-outline"
+            title="Pose detection unavailable"
+            message={pose.errorMessage ?? 'The pose model failed to load.'}
+            action={<Button label="Retry" icon="refresh" onPress={pose.retry} />}
+          />
+        </CenterOverlay>
+      ) : pose.status === 'loading' ? (
+        <CenterOverlay pointerEvents="none">
+          <ActivityIndicator color="#FFFFFF" size="large" />
+          <AppText variant="bodyStrong" color="onOverlay" center style={styles.loadingText}>
+            Starting pose detection…
+          </AppText>
+        </CenterOverlay>
+      ) : null}
+
+      {/* Live status pill (only once the model is running) */}
+      {pose.status === 'ready' && !cameraError ? (
+        <View
+          style={[styles.banner, { bottom: insets.bottom + theme.spacing.xxl }]}
+          pointerEvents="none"
+        >
+          <View style={styles.bannerPill}>
+            <View
+              style={[
+                styles.dot,
+                { backgroundColor: pose.personDetected ? theme.colors.success : theme.colors.warning },
+              ]}
+            />
+            <AppText variant="bodyStrong" color="onOverlay">
+              {pose.personDetected ? 'Tracking pose' : 'No person detected'}
+            </AppText>
+          </View>
+          {!pose.personDetected ? (
+            <AppText variant="caption" color="onOverlay" center style={styles.bannerHint}>
+              Step back so your whole body is in frame.
+            </AppText>
+          ) : null}
+        </View>
+      ) : null}
+    </View>
+  );
+}
+
+function CenterOverlay({
+  children,
+  pointerEvents,
+}: {
+  children: React.ReactNode;
+  pointerEvents?: 'none' | 'auto';
+}) {
+  return (
+    <View style={styles.centerOverlay} pointerEvents={pointerEvents}>
+      <View style={styles.centerCard}>{children}</View>
     </View>
   );
 }
@@ -129,16 +204,22 @@ export function WorkoutSessionScreen({
 function OverlayButton({
   icon,
   onPress,
+  active,
 }: {
   icon: React.ComponentProps<typeof Ionicons>['name'];
   onPress: () => void;
+  active?: boolean;
 }) {
   return (
     <Pressable
       accessibilityRole="button"
       hitSlop={8}
       onPress={onPress}
-      style={({ pressed }) => [styles.overlayButton, pressed && styles.pressed]}
+      style={({ pressed }) => [
+        styles.overlayButton,
+        active && styles.overlayButtonActive,
+        pressed && styles.pressed,
+      ]}
     >
       <Ionicons name={icon} size={24} color="#FFFFFF" />
     </Pressable>
@@ -147,7 +228,6 @@ function OverlayButton({
 
 const styles = StyleSheet.create({
   flex: { flex: 1, backgroundColor: '#000' },
-  centered: { alignItems: 'center', justifyContent: 'center' },
   topBar: {
     position: 'absolute',
     top: 0,
@@ -159,6 +239,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingBottom: 12,
   },
+  topRight: { flexDirection: 'row', gap: 12 },
   overlayButton: {
     width: 44,
     height: 44,
@@ -167,7 +248,25 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     backgroundColor: 'rgba(0,0,0,0.35)',
   },
+  overlayButtonActive: { backgroundColor: 'rgba(108,92,231,0.85)' },
   pressed: { opacity: 0.7 },
+  debug: {
+    position: 'absolute',
+    left: 16,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
+    backgroundColor: 'rgba(0,0,0,0.55)',
+  },
+  centerOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(0,0,0,0.55)',
+    paddingHorizontal: 24,
+  },
+  centerCard: { alignSelf: 'stretch', alignItems: 'center' },
+  loadingText: { marginTop: 16 },
   banner: { position: 'absolute', left: 24, right: 24, alignItems: 'center' },
   bannerPill: {
     flexDirection: 'row',
@@ -177,13 +276,7 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     backgroundColor: 'rgba(0,0,0,0.55)',
   },
-  dot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    backgroundColor: '#FF6369',
-    marginRight: 10,
-  },
+  dot: { width: 10, height: 10, borderRadius: 5, marginRight: 10 },
   bannerHint: { marginTop: 10, opacity: 0.85 },
-  permissionActions: { alignSelf: 'stretch', gap: 12 },
+  actions: { alignSelf: 'stretch', gap: 12 },
 });

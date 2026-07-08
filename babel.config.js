@@ -2,8 +2,13 @@ module.exports = function (api) {
   api.cache(true);
   return {
     presets: ['babel-preset-expo'],
-    // react-native-worklets/plugin powers react-native-reanimated v4 and
-    // MUST be listed last.
-    plugins: ['react-native-worklets/plugin'],
+    plugins: [
+      // Powers VisionCamera Frame Processor worklets (runs inference + Skia
+      // drawing on the camera thread).
+      'react-native-worklets-core/plugin',
+      // Powers react-native-reanimated v4. The worklets plugin MUST be listed
+      // last so it transforms after every other plugin.
+      'react-native-worklets/plugin',
+    ],
   };
 };
