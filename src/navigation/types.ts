@@ -1,9 +1,10 @@
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 
-/** All routes in the root stack and their params (none carry params yet). */
+/** All routes in the root stack and their params. */
 export type RootStackParamList = {
   Home: undefined;
-  WorkoutSession: undefined;
+  /** `resume` continues the persisted in-progress session instead of starting fresh. */
+  WorkoutSession: { resume?: boolean } | undefined;
   History: undefined;
   Statistics: undefined;
   Settings: undefined;

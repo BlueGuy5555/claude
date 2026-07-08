@@ -24,6 +24,14 @@ export async function addSessionToHistory(
   return next;
 }
 
+/** Remove a single session by id and persist. Returns the new list. */
+export async function deleteSession(id: string): Promise<WorkoutSession[]> {
+  const history = await loadHistory();
+  const next = history.filter((session) => session.id !== id);
+  await writeJSON(StorageKeys.workoutHistory, next);
+  return next;
+}
+
 export async function clearHistory(): Promise<void> {
   await removeKey(StorageKeys.workoutHistory);
 }

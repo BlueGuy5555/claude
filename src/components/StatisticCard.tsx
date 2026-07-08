@@ -1,5 +1,5 @@
 import React from 'react';
-import { StyleSheet, View } from 'react-native';
+import { StyleSheet } from 'react-native';
 
 import { useTheme } from '@/theme';
 import type { IconName } from '@/types';
@@ -8,7 +8,7 @@ import { AppText } from './AppText';
 import { Card } from './Card';
 import { IconBadge } from './IconBadge';
 
-interface StatCardProps {
+interface StatisticCardProps {
   icon: IconName;
   label: string;
   value: string;
@@ -17,7 +17,7 @@ interface StatCardProps {
 }
 
 /** Compact card showing a single headline metric (icon + value + label). */
-export function StatCard({ icon, label, value, tint }: StatCardProps) {
+export function StatisticCard({ icon, label, value, tint }: StatisticCardProps) {
   const theme = useTheme();
   return (
     <Card style={styles.card}>
@@ -28,7 +28,7 @@ export function StatCard({ icon, label, value, tint }: StatCardProps) {
         color={tint ?? theme.colors.primary}
         background={theme.colors.primarySoft}
       />
-      <AppText variant="headline" style={{ marginTop: theme.spacing.md }}>
+      <AppText variant="headline" style={{ marginTop: theme.spacing.md }} numberOfLines={1} adjustsFontSizeToFit>
         {value}
       </AppText>
       <AppText variant="caption" color="textMuted" style={styles.label}>

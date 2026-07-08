@@ -1,12 +1,18 @@
-import { EMPTY_STATISTICS, type Statistics, type WorkoutSession } from '@/types';
-import { daysBetween, isWithinLastWeek, startOfDay } from '@/utils';
+import {
+  EMPTY_STATISTICS,
+  type ExerciseId,
+  type PeriodSummary,
+  type Statistics,
+  type WorkoutSession,
+} from '@/types';
+import { daysBetween, isWithinLastDays, startOfDay } from '@/utils';
 
 /**
  * Pure aggregation of workout history into headline statistics.
  *
  * Kept free of storage and React so it is trivial to unit test and reuse. With
- * an empty history it returns `EMPTY_STATISTICS`, which is exactly the
- * "placeholder statistics" the Statistics screen shows on a fresh install.
+ * an empty history it returns `EMPTY_STATISTICS`, which is exactly what the
+ * Statistics screen shows on a fresh install.
  */
 export function computeStatistics(sessions: WorkoutSession[]): Statistics {
   if (sessions.length === 0) return EMPTY_STATISTICS;
@@ -14,7 +20,7 @@ export function computeStatistics(sessions: WorkoutSession[]): Statistics {
   const totalWorkouts = sessions.length;
   const totalReps = sessions.reduce((sum, s) => sum + s.totalReps, 0);
   const totalDurationSec = sessions.reduce((sum, s) => sum + s.durationSec, 0);
-  const workoutsThisWeek = sessions.filter((s) => isWithinLastWeek(s.startedAt)).length;
+  const totalCalories = sessions.reduce((sum, s) => sum + s.calories, 0);
 
   const sortedDesc = [...sessions].sort(
     (a, b) => new Date(b.startedAt).getTime() - new Date(a.startedAt).getTime(),
@@ -22,16 +28,70 @@ export function computeStatistics(sessions: WorkoutSession[]): Statistics {
   const lastWorkoutAt = sortedDesc[0]?.startedAt ?? null;
 
   const { currentStreakDays, longestStreakDays } = computeStreaks(sessions);
+  const { mostPerformedExerciseId, mostPerformedExerciseReps } = mostPerformed(sessions);
 
   return {
     totalWorkouts,
     totalReps,
     totalDurationSec,
+    totalCalories,
     currentStreakDays,
     longestStreakDays,
-    workoutsThisWeek,
+    mostPerformedExerciseId,
+    mostPerformedExerciseReps,
+    thisWeek: summarize(sessions.filter((s) => isWithinLastDays(s.startedAt, 7))),
+    thisMonth: summarize(sessions.filter((s) => isWithinLastDays(s.startedAt, 30))),
+    personalRecords: {
+      mostRepsInSession: Math.max(...sessions.map((s) => s.totalReps)),
+      longestSessionSec: Math.max(...sessions.map((s) => s.durationSec)),
+      mostRepsInDay: mostRepsInDay(sessions),
+      bestStreakDays: longestStreakDays,
+    },
     lastWorkoutAt,
   };
+}
+
+/** Roll a set of sessions up into a single period summary. */
+function summarize(sessions: WorkoutSession[]): PeriodSummary {
+  return {
+    workouts: sessions.length,
+    reps: sessions.reduce((sum, s) => sum + s.totalReps, 0),
+    durationSec: sessions.reduce((sum, s) => sum + s.durationSec, 0),
+    calories: sessions.reduce((sum, s) => sum + s.calories, 0),
+  };
+}
+
+/** The exercise with the most cumulative reps across all sessions. */
+function mostPerformed(sessions: WorkoutSession[]): {
+  mostPerformedExerciseId: ExerciseId | null;
+  mostPerformedExerciseReps: number;
+} {
+  const repsByExercise = new Map<ExerciseId, number>();
+  for (const session of sessions) {
+    for (const set of session.sets) {
+      repsByExercise.set(set.exerciseId, (repsByExercise.get(set.exerciseId) ?? 0) + set.reps);
+    }
+  }
+
+  let bestId: ExerciseId | null = null;
+  let bestReps = 0;
+  for (const [id, reps] of repsByExercise) {
+    if (reps > bestReps) {
+      bestId = id;
+      bestReps = reps;
+    }
+  }
+  return { mostPerformedExerciseId: bestId, mostPerformedExerciseReps: bestReps };
+}
+
+/** The highest rep total recorded on any single calendar day. */
+function mostRepsInDay(sessions: WorkoutSession[]): number {
+  const repsByDay = new Map<number, number>();
+  for (const session of sessions) {
+    const day = startOfDay(new Date(session.startedAt)).getTime();
+    repsByDay.set(day, (repsByDay.get(day) ?? 0) + session.totalReps);
+  }
+  return repsByDay.size === 0 ? 0 : Math.max(...repsByDay.values());
 }
 
 /**

@@ -3,11 +3,26 @@
 An **offline-first** workout rep-counter built with Expo. Everything runs
 on-device and no data ever leaves the phone.
 
-> **Status — Milestone 1 of 4: Foundation.**
-> This milestone establishes a clean, production-quality app skeleton:
-> navigation, all five screens, a local storage layer, theming with dark mode,
-> and a live camera preview. **AI / pose detection is intentionally not
-> implemented yet** and arrives in a later milestone.
+> **Status.** The full application is implemented: Home, Workout Session,
+> History, Statistics, and Settings, all backed by local storage. During a
+> session reps are produced by a **simulated counter** so the entire UI can be
+> exercised. Real **AI / pose detection is intentionally not implemented yet**;
+> the camera screen shows an *"AI Pose Detection Coming Soon"* banner in its
+> place and arrives in a later milestone.
+
+## Features
+
+- **Home** — greeting, quick-start, resume an in-progress workout, today's
+  numbers, and a preview of your most recent session.
+- **Workout Session** — live camera preview, exercise picker, start / pause /
+  resume / finish, an elapsed timer, a simulated rep counter (tap to add reps
+  too), a live calorie estimate, haptics, and a saved session summary.
+- **History** — every saved workout with date, duration, exercise, reps, and
+  energy; swipe-free delete per row and a clear-all action.
+- **Statistics** — all-time totals, streaks, most-performed exercise, rolling
+  7- and 30-day summaries, and personal records.
+- **Settings** — light / dark / system theme, haptics and sound toggles,
+  measurement units, reset settings, and clear all data.
 
 ## Tech stack
 
@@ -17,7 +32,7 @@ on-device and no data ever leaves the phone.
 - **expo-haptics** — feedback that respects the vibration setting
 - **@react-native-async-storage/async-storage** — the only persistence layer
 - **react-native-svg** — the app logo
-- **react-native-reanimated** — subtle entrance and pulse animations
+- **react-native-reanimated** — subtle entrance, pulse, and count animations
 - **@expo/vector-icons** — iconography
 
 ## Getting started
@@ -55,8 +70,9 @@ imports React.
 ## Local storage
 
 All data is namespaced under `@repcount/v1/*` in AsyncStorage and serialized as
-JSON. The storage layer is ready to persist workout history, in-progress
-sessions, user settings, preferences, and a cached statistics snapshot.
+JSON. The storage layer persists workout history, the in-progress session
+(so it can be resumed), user settings, preferences, and a cached statistics
+snapshot.
 
 ## Scripts
 

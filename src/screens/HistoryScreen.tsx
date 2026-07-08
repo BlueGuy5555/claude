@@ -1,12 +1,13 @@
-import React from 'react';
-import { ActivityIndicator, FlatList, StyleSheet, View } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import React, { useLayoutEffect, useState } from 'react';
+import { FlatList, Pressable } from 'react-native';
 
 import {
-  AppText,
   Button,
-  Card,
+  ConfirmationDialog,
   EmptyState,
-  IconBadge,
+  HistoryCard,
+  LoadingSpinner,
   ScreenContainer,
 } from '@/components';
 import { useWorkoutHistory } from '@/hooks';
@@ -14,42 +15,41 @@ import type { RootStackScreenProps } from '@/navigation';
 import { toHistoryItem, type WorkoutHistoryItem } from '@/services';
 import { useTheme } from '@/theme';
 
-function HistoryRow({ item }: { item: WorkoutHistoryItem }) {
-  const theme = useTheme();
-  return (
-    <Card style={styles.row}>
-      <IconBadge name={item.icon} />
-      <View style={[styles.rowText, { marginHorizontal: theme.spacing.md }]}>
-        <AppText variant="bodyStrong">{item.title}</AppText>
-        <AppText variant="caption" color="textMuted" style={styles.rowMeta}>
-          {item.relativeDate} · {item.durationLabel}
-        </AppText>
-      </View>
-      <View style={styles.reps}>
-        <AppText variant="subtitle" color="primary">
-          {item.totalReps}
-        </AppText>
-        <AppText variant="caption" color="textMuted">
-          reps
-        </AppText>
-      </View>
-    </Card>
-  );
-}
-
 export function HistoryScreen({ navigation }: RootStackScreenProps<'History'>) {
   const theme = useTheme();
-  const { history, isLoading } = useWorkoutHistory();
+  const { history, isLoading, remove, clear } = useWorkoutHistory();
+  const [pendingDelete, setPendingDelete] = useState<WorkoutHistoryItem | null>(null);
+  const [clearOpen, setClearOpen] = useState(false);
+
+  const hasHistory = history.length > 0;
+
+  // Show a "clear all" action in the navigation header when there is history.
+  useLayoutEffect(() => {
+    navigation.setOptions({
+      headerRight: hasHistory
+        ? () => (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Clear all workouts"
+              hitSlop={8}
+              onPress={() => setClearOpen(true)}
+            >
+              <Ionicons name="trash-outline" size={22} color={theme.colors.danger} />
+            </Pressable>
+          )
+        : undefined,
+    });
+  }, [navigation, hasHistory, theme.colors.danger]);
 
   if (isLoading) {
     return (
-      <ScreenContainer scroll={false} style={styles.centered}>
-        <ActivityIndicator color={theme.colors.primary} />
+      <ScreenContainer scroll={false}>
+        <LoadingSpinner />
       </ScreenContainer>
     );
   }
 
-  if (history.length === 0) {
+  if (!hasHistory) {
     return (
       <ScreenContainer scroll={false}>
         <EmptyState
@@ -75,18 +75,42 @@ export function HistoryScreen({ navigation }: RootStackScreenProps<'History'>) {
       <FlatList
         data={items}
         keyExtractor={(item) => item.id}
-        renderItem={({ item }) => <HistoryRow item={item} />}
+        renderItem={({ item }) => (
+          <HistoryCard item={item} onDelete={() => setPendingDelete(item)} />
+        )}
         contentContainerStyle={{ padding: theme.spacing.xl, gap: theme.spacing.md }}
         showsVerticalScrollIndicator={false}
+      />
+
+      <ConfirmationDialog
+        visible={pendingDelete !== null}
+        title="Delete workout?"
+        message={
+          pendingDelete
+            ? `This permanently removes your "${pendingDelete.title}" workout from this device.`
+            : ''
+        }
+        confirmLabel="Delete"
+        destructive
+        onConfirm={() => {
+          if (pendingDelete) void remove(pendingDelete.id);
+          setPendingDelete(null);
+        }}
+        onCancel={() => setPendingDelete(null)}
+      />
+
+      <ConfirmationDialog
+        visible={clearOpen}
+        title="Clear all history?"
+        message="This permanently deletes every saved workout from this device. Your settings are kept."
+        confirmLabel="Delete all"
+        destructive
+        onConfirm={() => {
+          void clear();
+          setClearOpen(false);
+        }}
+        onCancel={() => setClearOpen(false)}
       />
     </ScreenContainer>
   );
 }
-
-const styles = StyleSheet.create({
-  centered: { alignItems: 'center', justifyContent: 'center' },
-  row: { flexDirection: 'row', alignItems: 'center' },
-  rowText: { flex: 1 },
-  rowMeta: { marginTop: 2 },
-  reps: { alignItems: 'center', minWidth: 44 },
-});

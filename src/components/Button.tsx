@@ -26,6 +26,8 @@ interface ButtonProps {
   disabled?: boolean;
   loading?: boolean;
   fullWidth?: boolean;
+  /** Render in a destructive (red) tone. */
+  danger?: boolean;
   /** Trigger light haptic feedback on press (respects the vibration setting). */
   haptic?: boolean;
   style?: ViewStyle;
@@ -33,7 +35,8 @@ interface ButtonProps {
 
 /**
  * The app's primary tappable control. Handles theming, three visual variants,
- * an optional leading icon, a loading state, and (opt-in) haptic feedback.
+ * a destructive tone, an optional leading icon, a loading state, and (opt-in)
+ * haptic feedback.
  */
 export function Button({
   label,
@@ -44,6 +47,7 @@ export function Button({
   disabled,
   loading,
   fullWidth = true,
+  danger = false,
   haptic = true,
   style,
 }: ButtonProps) {
@@ -54,13 +58,19 @@ export function Button({
 
   const backgroundColor =
     variant === 'primary'
-      ? theme.colors.primary
+      ? danger
+        ? theme.colors.danger
+        : theme.colors.primary
       : variant === 'secondary'
         ? theme.colors.surfaceAlt
         : 'transparent';
 
   const foreground =
-    variant === 'primary' ? theme.colors.onPrimary : theme.colors.text;
+    variant === 'primary'
+      ? theme.colors.onPrimary
+      : danger
+        ? theme.colors.danger
+        : theme.colors.text;
 
   const handlePress = () => {
     if (haptic) impact('light');

@@ -12,10 +12,20 @@ export function daysBetween(a: Date, b: Date): number {
   return Math.round((startOfDay(a).getTime() - startOfDay(b).getTime()) / MS_PER_DAY);
 }
 
+/** True when `iso` falls within the last `days` days (including today). */
+export function isWithinLastDays(iso: string, days: number, now: Date = new Date()): boolean {
+  const diff = daysBetween(now, new Date(iso));
+  return diff >= 0 && diff < days;
+}
+
 /** True when `iso` falls within the last 7 days (including today). */
 export function isWithinLastWeek(iso: string, now: Date = new Date()): boolean {
-  const diff = daysBetween(now, new Date(iso));
-  return diff >= 0 && diff < 7;
+  return isWithinLastDays(iso, 7, now);
+}
+
+/** True when `iso` is on the same calendar day as `now`. */
+export function isToday(iso: string, now: Date = new Date()): boolean {
+  return daysBetween(now, new Date(iso)) === 0;
 }
 
 /**
