@@ -17,7 +17,7 @@
     "ios": {
       "supportsTablet": true,
       "infoPlist": {
-        "NSCameraUsageDescription": "RepCount uses the camera to preview your workout. Video never leaves your device."
+        "NSCameraUsageDescription": "RepCount uses the camera to detect your body pose on-device and count reps. Video never leaves your device."
       }
     },
     "android": {
@@ -34,9 +34,18 @@
     },
     "plugins": [
       [
-        "expo-camera",
+        "react-native-vision-camera",
         {
-          "cameraPermission": "RepCount uses the camera to preview your workout. Video never leaves your device."
+          "cameraPermissionText": "RepCount uses the camera to detect your body pose on-device and count reps. Video never leaves your device.",
+          "enableMicrophonePermission": false,
+          "enableFrameProcessors": true
+        }
+      ],
+      [
+        "react-native-fast-tflite",
+        {
+          "enableCoreMLDelegate": true,
+          "enableAndroidGpuLibraries": true
         }
       ]
     ]
