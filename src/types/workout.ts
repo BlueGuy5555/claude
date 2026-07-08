@@ -1,15 +1,33 @@
 /**
  * Domain models for workouts.
- *
- * NOTE: rep counting / pose detection is intentionally NOT implemented in this
- * milestone. These types describe the shape of the data the storage layer is
- * ready to persist so later milestones can fill them in without a migration.
  */
 
 import type { IconName } from './icon';
 
-/** Exercises the app will eventually be able to count. */
-export type ExerciseId = 'squat' | 'pushup' | 'situp' | 'jumping_jack' | 'lunge';
+/** Exercises the app can count. `plank` is timed rather than rep-based. */
+export type ExerciseId =
+  | 'pushup'
+  | 'squat'
+  | 'pullup'
+  | 'lunge'
+  | 'jumping_jack'
+  | 'plank';
+
+/** Whether an exercise is scored by counting reps or by holding a position. */
+export type ExerciseKind = 'reps' | 'timed';
+
+/**
+ * A phase of a repetition, produced by the rep-counting state machine.
+ * `hold` / `broken` are only used by timed (plank-style) exercises.
+ */
+export type WorkoutPhase =
+  | 'idle'
+  | 'top'
+  | 'descending'
+  | 'bottom'
+  | 'ascending'
+  | 'hold'
+  | 'broken';
 
 export interface Exercise {
   id: ExerciseId;
@@ -17,6 +35,14 @@ export interface Exercise {
   name: string;
   /** Ionicons glyph name used to represent the exercise in the UI. */
   icon: IconName;
+  kind: ExerciseKind;
+  /**
+   * Metabolic Equivalent of Task — used for the offline calorie estimate.
+   * Values follow the Compendium of Physical Activities.
+   */
+  met: number;
+  /** One-line coaching cue shown before/while performing the exercise. */
+  cue: string;
 }
 
 /** A single block of one exercise within a session. */
@@ -36,5 +62,9 @@ export interface WorkoutSession {
   durationSec: number;
   sets: WorkoutSet[];
   totalReps: number;
+  /** Offline calorie estimate for the whole session (kcal). */
+  calories: number;
+  /** Mean pose confidence recorded across the session, in `[0, 1]`. */
+  avgConfidence: number;
   notes?: string;
 }

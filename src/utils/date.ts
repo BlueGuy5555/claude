@@ -18,6 +18,12 @@ export function isWithinLastWeek(iso: string, now: Date = new Date()): boolean {
   return diff >= 0 && diff < 7;
 }
 
+/** True when `iso` falls in the same calendar month and year as `now`. */
+export function isSameCalendarMonth(iso: string, now: Date = new Date()): boolean {
+  const date = new Date(iso);
+  return date.getFullYear() === now.getFullYear() && date.getMonth() === now.getMonth();
+}
+
 /**
  * Human-friendly relative label for a timestamp, e.g. "Today", "Yesterday",
  * "3 days ago", or a locale date for anything older than a week.
