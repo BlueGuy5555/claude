@@ -3,23 +3,27 @@ import React from 'react';
 import { ActivityIndicator, StyleSheet, View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
-import { SettingsProvider, useSettings } from '@/context';
+import { SettingsProvider, WorkoutDataProvider, useSettings } from '@/context';
 import { RootNavigator } from '@/navigation';
 import { ThemeProvider, useTheme } from '@/theme';
 
 /**
  * Provider composition:
- *   SafeAreaProvider → SettingsProvider → ThemeProvider → navigation
+ *   SafeAreaProvider → SettingsProvider → ThemeProvider → WorkoutDataProvider → navigation
  *
  * SettingsProvider sits above ThemeProvider because the active theme is derived
- * from the persisted `darkMode` setting.
+ * from the persisted `darkMode` setting. WorkoutDataProvider loads workout
+ * history once and holds it in memory as the single source of truth for the
+ * dashboard, history, statistics and goals surfaces.
  */
 export default function App() {
   return (
     <SafeAreaProvider>
       <SettingsProvider>
         <ThemeProvider>
-          <AppContent />
+          <WorkoutDataProvider>
+            <AppContent />
+          </WorkoutDataProvider>
         </ThemeProvider>
       </SettingsProvider>
     </SafeAreaProvider>

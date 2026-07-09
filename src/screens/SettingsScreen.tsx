@@ -11,9 +11,8 @@ import {
   SettingSegment,
 } from '@/components';
 import { APP } from '@/constants';
-import { useSettings } from '@/context';
+import { useSettings, useWorkoutData } from '@/context';
 import { useHaptics } from '@/hooks';
-import { clearHistory } from '@/storage';
 import type { ConfidenceLevel, Settings } from '@/types';
 import { useTheme } from '@/theme';
 
@@ -75,6 +74,7 @@ const CONFIDENCE_OPTIONS: readonly { value: ConfidenceLevel; label: string }[] =
 export function SettingsScreen() {
   const theme = useTheme();
   const { settings, updateSetting } = useSettings();
+  const { clear } = useWorkoutData();
   const { selection, notify } = useHaptics();
 
   const handleToggle = (key: keyof Settings, value: boolean) => {
@@ -92,7 +92,7 @@ export function SettingsScreen() {
           text: 'Delete',
           style: 'destructive',
           onPress: async () => {
-            await clearHistory();
+            await clear();
             notify('success');
             Alert.alert('History cleared', 'Your workout history has been deleted.');
           },

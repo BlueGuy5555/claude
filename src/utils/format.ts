@@ -26,3 +26,37 @@ export function formatClock(totalSeconds: number): string {
 export function formatNumber(value: number): string {
   return Math.round(value).toLocaleString('en-US');
 }
+
+/** Round to at most one decimal and append " kcal", e.g. 42.4 -> "42 kcal". */
+export function formatCalories(value: number): string {
+  return `${Math.round(value).toLocaleString('en-US')} kcal`;
+}
+
+/**
+ * Format a pace expressed in seconds-per-rep. Values below 60s read as e.g.
+ * "2.4s/rep"; larger paces fall back to mm:ss. `null` renders as an em dash.
+ */
+export function formatPace(secondsPerRep: number | null): string {
+  if (secondsPerRep == null || !Number.isFinite(secondsPerRep)) return '—';
+  if (secondsPerRep < 60) {
+    const rounded = Math.round(secondsPerRep * 10) / 10;
+    return `${rounded}s/rep`;
+  }
+  return `${formatClock(secondsPerRep)}/rep`;
+}
+
+/** Compact whole-minute label, e.g. 5400s -> "90 min". */
+export function formatMinutes(totalSeconds: number): string {
+  return `${Math.round(totalSeconds / 60)} min`;
+}
+
+/** Format a `[0, 1]` fraction as a whole-number percentage, e.g. "72%". */
+export function formatPercent(fraction: number): string {
+  return `${Math.round(Math.max(0, Math.min(1, fraction)) * 100)}%`;
+}
+
+/** Signed percentage for trends, e.g. 0.28 -> "+28%", -0.1 -> "-10%". */
+export function formatSignedPercent(fraction: number): string {
+  const pct = Math.round(fraction * 100);
+  return `${pct >= 0 ? '+' : ''}${pct}%`;
+}

@@ -12,11 +12,10 @@ import {
   type CameraFacing,
   type WorkoutMetrics,
 } from '@/ai';
-import { useSettings } from '@/context';
+import { useSettings, useWorkoutData } from '@/context';
 import { useHaptics } from '@/hooks';
 import type { RootStackScreenProps } from '@/navigation';
 import { buildSession, exerciseName } from '@/services';
-import { addSessionToHistory } from '@/storage';
 import { useTheme } from '@/theme';
 import { CONFIDENCE_THRESHOLDS } from '@/types';
 
@@ -34,6 +33,7 @@ export function WorkoutSessionScreen({
   const insets = useSafeAreaInsets();
   const isFocused = useIsFocused();
   const { settings } = useSettings();
+  const { addSession } = useWorkoutData();
   const { impact, notify } = useHaptics();
 
   const [facing, setFacing] = useState<CameraFacing>('back');
@@ -52,6 +52,13 @@ export function WorkoutSessionScreen({
   const impactRef = useRef(impact);
   impactRef.current = impact;
 
+  // Screen-level analytics capture. These observe the metrics the pose layer
+  // already emits (rep completions + per-frame confidence); they do NOT reach
+  // into or alter pose detection, rep counting or the camera pipeline.
+  const repOffsetsRef = useRef<number[]>([]);
+  const confidenceSumRef = useRef(0);
+  const confidenceCountRef = useRef(0);
+
   const minConfidence = CONFIDENCE_THRESHOLDS[settings.confidence];
   const mirror = facing === 'front' && settings.mirrorFrontCamera;
 
@@ -60,7 +67,17 @@ export function WorkoutSessionScreen({
     setPhaseLabel(m.phaseLabel);
     setConfidence(m.confidence);
     setFps(m.fps);
-    if (m.repCompleted) impactRef.current('medium');
+    if (m.repCompleted) {
+      impactRef.current('medium');
+      const startedAt = startedAtRef.current;
+      if (startedAt) repOffsetsRef.current.push(Date.now() - startedAt.getTime());
+      // Sample confidence at the moment of a completed rep for a session-level
+      // average that reflects the reps actually counted.
+      if (m.confidence > 0) {
+        confidenceSumRef.current += m.confidence;
+        confidenceCountRef.current += 1;
+      }
+    }
   }, []);
 
   const onModelReady = useCallback(() => setModelReady(true), []);
@@ -68,6 +85,9 @@ export function WorkoutSessionScreen({
 
   const start = () => {
     startedAtRef.current = new Date();
+    repOffsetsRef.current = [];
+    confidenceSumRef.current = 0;
+    confidenceCountRef.current = 0;
     setReps(0);
     setResetToken((t) => t + 1);
     setCounting(true);
@@ -83,13 +103,24 @@ export function WorkoutSessionScreen({
     setCounting(false);
     const startedAt = startedAtRef.current;
     if (startedAt && reps > 0) {
-      await addSessionToHistory(
-        buildSession({ exerciseId, reps, startedAt, endedAt: new Date() }),
+      const avgConfidence =
+        confidenceCountRef.current > 0
+          ? confidenceSumRef.current / confidenceCountRef.current
+          : undefined;
+      await addSession(
+        buildSession({
+          exerciseId,
+          reps,
+          startedAt,
+          endedAt: new Date(),
+          repOffsetsMs: [...repOffsetsRef.current],
+          avgConfidence,
+        }),
       );
       notify('success');
     }
     navigation.goBack();
-  }, [exerciseId, reps, notify, navigation]);
+  }, [exerciseId, reps, notify, navigation, addSession]);
 
   // --- Permission gates -----------------------------------------------------
 

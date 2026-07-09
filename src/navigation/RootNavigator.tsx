@@ -9,8 +9,10 @@ import { StatusBar } from 'expo-status-bar';
 import React, { useMemo } from 'react';
 
 import {
+  GoalsScreen,
   HistoryScreen,
   HomeScreen,
+  SessionDetailScreen,
   SettingsScreen,
   StatisticsScreen,
   WorkoutSessionScreen,
@@ -68,7 +70,13 @@ export function RootNavigator() {
           options={{ headerShown: false, animation: 'slide_from_bottom' }}
         />
         <Stack.Screen name="History" component={HistoryScreen} />
+        <Stack.Screen
+          name="SessionDetail"
+          component={SessionDetailScreen}
+          options={{ title: 'Session' }}
+        />
         <Stack.Screen name="Statistics" component={StatisticsScreen} />
+        <Stack.Screen name="Goals" component={GoalsScreen} />
         <Stack.Screen name="Settings" component={SettingsScreen} />
       </Stack.Navigator>
     </NavigationContainer>

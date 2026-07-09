@@ -8,7 +8,11 @@ export type RootStackParamList = {
   /** The workout screen counts reps for the chosen exercise. */
   WorkoutSession: { exerciseId: ExerciseId };
   History: undefined;
+  /** Detailed breakdown of a single stored session. */
+  SessionDetail: { sessionId: string };
   Statistics: undefined;
+  /** Set and track goals. */
+  Goals: undefined;
   Settings: undefined;
 };
 

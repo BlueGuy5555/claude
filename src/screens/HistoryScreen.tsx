@@ -1,5 +1,5 @@
 import React from 'react';
-import { ActivityIndicator, FlatList, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, FlatList, Pressable, StyleSheet, View } from 'react-native';
 
 import {
   AppText,
@@ -14,27 +14,39 @@ import type { RootStackScreenProps } from '@/navigation';
 import { toHistoryItem, type WorkoutHistoryItem } from '@/services';
 import { useTheme } from '@/theme';
 
-function HistoryRow({ item }: { item: WorkoutHistoryItem }) {
+function HistoryRow({
+  item,
+  onPress,
+}: {
+  item: WorkoutHistoryItem;
+  onPress: () => void;
+}) {
   const theme = useTheme();
   return (
-    <Card style={styles.row}>
-      <IconBadge name={item.icon} />
-      <View style={[styles.rowText, { marginHorizontal: theme.spacing.md }]}>
-        <AppText variant="bodyStrong">{item.title}</AppText>
-        <AppText variant="caption" color="textMuted" style={styles.rowMeta}>
-          {item.relativeDate} · {item.durationLabel}
-          {item.caloriesLabel ? ` · ${item.caloriesLabel}` : ''}
-        </AppText>
-      </View>
-      <View style={styles.reps}>
-        <AppText variant="subtitle" color="primary">
-          {item.totalReps}
-        </AppText>
-        <AppText variant="caption" color="textMuted">
-          reps
-        </AppText>
-      </View>
-    </Card>
+    <Pressable
+      accessibilityRole="button"
+      onPress={onPress}
+      style={({ pressed }) => [pressed && styles.pressed]}
+    >
+      <Card style={styles.row}>
+        <IconBadge name={item.icon} />
+        <View style={[styles.rowText, { marginHorizontal: theme.spacing.md }]}>
+          <AppText variant="bodyStrong">{item.title}</AppText>
+          <AppText variant="caption" color="textMuted" style={styles.rowMeta}>
+            {item.relativeDate} · {item.durationLabel}
+            {item.caloriesLabel ? ` · ${item.caloriesLabel}` : ''}
+          </AppText>
+        </View>
+        <View style={styles.reps}>
+          <AppText variant="subtitle" color="primary">
+            {item.totalReps}
+          </AppText>
+          <AppText variant="caption" color="textMuted">
+            reps
+          </AppText>
+        </View>
+      </Card>
+    </Pressable>
   );
 }
 
@@ -76,9 +88,18 @@ export function HistoryScreen({ navigation }: RootStackScreenProps<'History'>) {
       <FlatList
         data={items}
         keyExtractor={(item) => item.id}
-        renderItem={({ item }) => <HistoryRow item={item} />}
+        renderItem={({ item }) => (
+          <HistoryRow
+            item={item}
+            onPress={() => navigation.navigate('SessionDetail', { sessionId: item.id })}
+          />
+        )}
         contentContainerStyle={{ padding: theme.spacing.xl, gap: theme.spacing.md }}
         showsVerticalScrollIndicator={false}
+        // Perf: even thousands of rows stay smooth by windowing aggressively.
+        initialNumToRender={12}
+        windowSize={11}
+        removeClippedSubviews
       />
     </ScreenContainer>
   );
@@ -90,4 +111,5 @@ const styles = StyleSheet.create({
   rowText: { flex: 1 },
   rowMeta: { marginTop: 2 },
   reps: { alignItems: 'center', minWidth: 44 },
+  pressed: { opacity: 0.85 },
 });

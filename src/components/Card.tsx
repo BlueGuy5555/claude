@@ -1,5 +1,5 @@
 import React from 'react';
-import { StyleSheet, View, type ViewProps, type ViewStyle } from 'react-native';
+import { StyleSheet, View, type StyleProp, type ViewProps, type ViewStyle } from 'react-native';
 
 import { useTheme } from '@/theme';
 
@@ -7,7 +7,7 @@ interface CardProps extends ViewProps {
   children: React.ReactNode;
   /** Use the alternate (slightly recessed) surface color. */
   alt?: boolean;
-  style?: ViewStyle;
+  style?: StyleProp<ViewStyle>;
 }
 
 /** A rounded, bordered surface used to group related content. */
