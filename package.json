@@ -9,7 +9,7 @@
     "ios": "expo start --ios",
     "web": "expo start --web",
     "typecheck": "tsc --noEmit",
-    "test": "tsx src/ai/__tests__/temporalFilter.test.ts && tsx src/ai/__tests__/stateMachine.test.ts && tsx src/ai/__tests__/decode.test.ts && tsx src/ai/__tests__/PosePipeline.test.ts && tsx src/services/__tests__/analyticsService.test.ts && tsx src/services/__tests__/streakService.test.ts && tsx src/services/__tests__/goalService.test.ts && tsx src/services/__tests__/recordsService.test.ts && tsx src/services/__tests__/insightsService.test.ts && tsx src/services/__tests__/statisticsService.test.ts && tsx src/services/__tests__/workoutService.test.ts && tsx src/database/__tests__/migrations.test.ts"
+    "test": "tsx src/ai/__tests__/temporalFilter.test.ts && tsx src/ai/__tests__/stateMachine.test.ts && tsx src/ai/__tests__/decode.test.ts && tsx src/ai/__tests__/PosePipeline.test.ts && tsx src/services/__tests__/analyticsService.test.ts && tsx src/services/__tests__/streakService.test.ts && tsx src/services/__tests__/goalService.test.ts && tsx src/services/__tests__/recordsService.test.ts && tsx src/services/__tests__/insightsService.test.ts && tsx src/services/__tests__/statisticsService.test.ts && tsx src/services/__tests__/sessionService.test.ts && tsx src/services/__tests__/workoutService.test.ts && tsx src/database/__tests__/migrations.test.ts"
   },
   "dependencies": {
     "@expo/vector-icons": "^15.0.3",

@@ -4,7 +4,15 @@
  *
  * Run with: `npx tsx src/services/__tests__/workoutService.test.ts`
  */
-import { buildSession, computeRepTiming, estimateCalories, toCSV, toHistoryItem, toJSON } from '@/services';
+import {
+  SYNC_TARGETS,
+  buildSession,
+  computeRepTiming,
+  estimateCalories,
+  toCSV,
+  toHistoryItem,
+  toJSON,
+} from '@/services';
 
 import { makeCheck, session, summary, type Counters } from './helpers';
 
@@ -94,6 +102,17 @@ console.log('toHistoryItem');
   check('exposes a time-of-day label', typeof item.timeLabel === 'string' && item.timeLabel.length > 0);
   check('carries reps through', item.totalReps === 20);
   check('formats a calories label', item.caloriesLabel !== null);
+}
+
+console.log('SYNC_TARGETS');
+{
+  check('CSV and JSON are ready today', SYNC_TARGETS.filter((t) => t.status === 'ready').length === 2);
+  check(
+    'cloud/health targets are planned',
+    ['cloud', 'google_fit', 'apple_health'].every(
+      (id) => SYNC_TARGETS.find((t) => t.id === id)?.status === 'planned',
+    ),
+  );
 }
 
 summary('workoutService', counters);

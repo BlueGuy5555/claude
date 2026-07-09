@@ -5,7 +5,6 @@
  */
 import { StorageKeys } from '@/storage/keys';
 import { readJSON, removeKey, writeJSON } from '@/storage/storage';
-import { createId } from '@/utils';
 import { DEFAULT_GOALS, type Goal } from '@/types';
 
 export interface GoalsRepository {
@@ -14,11 +13,16 @@ export interface GoalsRepository {
   clear(): Promise<void>;
 }
 
-/** Materialize the default starter goals with ids + timestamps. */
+/**
+ * Materialize the default starter goals. Seed ids are *deterministic*
+ * (`seed_<metric>_<period>`) rather than random, so reading an unsaved default
+ * set repeatedly returns stable ids — the Goals list and dashboard preview
+ * don't churn/re-animate every time a screen regains focus.
+ */
 function seedGoals(now: Date): Goal[] {
   return DEFAULT_GOALS.map((g) => ({
     ...g,
-    id: createId('goal'),
+    id: `seed_${g.metric}_${g.period}`,
     createdAt: now.toISOString(),
   }));
 }
