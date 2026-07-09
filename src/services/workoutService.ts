@@ -5,6 +5,7 @@ import {
   formatCalories,
   formatDuration,
   formatRelativeDate,
+  formatTimeOfDay,
 } from '@/utils';
 
 /** A workout session shaped for direct rendering in a list row. */
@@ -12,6 +13,8 @@ export interface WorkoutHistoryItem {
   id: string;
   title: string;
   relativeDate: string;
+  /** Time of day the session started, e.g. "4:05 PM". */
+  timeLabel: string;
   durationLabel: string;
   totalReps: number;
   /** e.g. "42 kcal", or null when not recorded. */
@@ -162,6 +165,7 @@ export function toHistoryItem(session: WorkoutSession): WorkoutHistoryItem {
     id: session.id,
     title: buildTitle(session),
     relativeDate: formatRelativeDate(session.startedAt),
+    timeLabel: formatTimeOfDay(session.startedAt),
     durationLabel: formatDuration(session.durationSec),
     totalReps: session.totalReps,
     caloriesLabel: session.calories != null ? formatCalories(session.calories) : null,

@@ -33,7 +33,7 @@ function HistoryRow({
         <View style={[styles.rowText, { marginHorizontal: theme.spacing.md }]}>
           <AppText variant="bodyStrong">{item.title}</AppText>
           <AppText variant="caption" color="textMuted" style={styles.rowMeta}>
-            {item.relativeDate} · {item.durationLabel}
+            {item.relativeDate} · {item.timeLabel} · {item.durationLabel}
             {item.caloriesLabel ? ` · ${item.caloriesLabel}` : ''}
           </AppText>
         </View>

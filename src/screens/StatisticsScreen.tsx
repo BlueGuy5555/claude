@@ -218,6 +218,14 @@ export function StatisticsScreen() {
         />
       </ChartCard>
 
+      <ChartCard title="Streak history" subtitle="Days you trained." delay={260}>
+        <BarChart
+          data={charts.activity}
+          color={theme.colors.warning}
+          labelEvery={charts.activity.length > 10 ? 5 : 1}
+        />
+      </ChartCard>
+
       <ChartCard title="Weekly reps" subtitle="Trailing 12 weeks." delay={280}>
         <BarChart data={charts.weeklyReps} labelEvery={2} />
       </ChartCard>

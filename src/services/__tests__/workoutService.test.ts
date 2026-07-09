@@ -4,7 +4,7 @@
  *
  * Run with: `npx tsx src/services/__tests__/workoutService.test.ts`
  */
-import { buildSession, computeRepTiming, estimateCalories, toCSV, toJSON } from '@/services';
+import { buildSession, computeRepTiming, estimateCalories, toCSV, toHistoryItem, toJSON } from '@/services';
 
 import { makeCheck, session, summary, type Counters } from './helpers';
 
@@ -84,6 +84,16 @@ console.log('toCSV — escaping');
   s.notes = 'felt great, pushed "hard"';
   const csv = toCSV([s]);
   check('quotes fields with commas/quotes', csv.includes('"felt great, pushed ""hard"""'));
+}
+
+console.log('toHistoryItem');
+{
+  const s = session({ date: '2026-07-09', exercise: 'pushup', reps: 20, durationSec: 100, hour: 9 });
+  const item = toHistoryItem(s);
+  check('title uses the exercise name', item.title === 'Push-up');
+  check('exposes a time-of-day label', typeof item.timeLabel === 'string' && item.timeLabel.length > 0);
+  check('carries reps through', item.totalReps === 20);
+  check('formats a calories label', item.caloriesLabel !== null);
 }
 
 summary('workoutService', counters);
