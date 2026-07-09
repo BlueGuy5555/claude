@@ -8,8 +8,20 @@
 export type { Keypoint, KeypointName, Pose, PoseDetectorStatus, Point } from './types';
 export { PosePipeline } from './PosePipeline';
 export type { PipelineOptions, PipelineResult } from './PosePipeline';
-export { EXERCISE_CONFIGS } from './repcounting';
-export type { ExerciseConfig, ExercisePhase, RepUpdate } from './repcounting';
+export {
+  PushupCounter,
+  SquatCounter,
+  ExerciseCounter,
+  createCounter,
+  EXERCISE_DEFINITIONS,
+} from './repcounting';
+export type {
+  RepState,
+  ExercisePhase,
+  RepUpdate,
+  ExerciseDefinition,
+  PoseFeatures,
+} from './repcounting';
 
 export { PoseCameraView } from './PoseCameraView';
 export type { PoseCameraViewProps, WorkoutMetrics } from './PoseCameraView';
