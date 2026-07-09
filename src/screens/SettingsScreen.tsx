@@ -1,5 +1,5 @@
 import React from 'react';
-import { Alert, StyleSheet, View } from 'react-native';
+import { Alert, Share, StyleSheet, View } from 'react-native';
 
 import {
   AppText,
@@ -13,6 +13,7 @@ import {
 import { APP } from '@/constants';
 import { useSettings, useWorkoutData } from '@/context';
 import { useHaptics } from '@/hooks';
+import { SYNC_TARGETS, toCSV, toJSON } from '@/services';
 import type { ConfidenceLevel, Settings } from '@/types';
 import { useTheme } from '@/theme';
 
@@ -74,7 +75,7 @@ const CONFIDENCE_OPTIONS: readonly { value: ConfidenceLevel; label: string }[] =
 export function SettingsScreen() {
   const theme = useTheme();
   const { settings, updateSetting } = useSettings();
-  const { clear } = useWorkoutData();
+  const { records, clear } = useWorkoutData();
   const { selection, notify } = useHaptics();
 
   const handleToggle = (key: keyof Settings, value: boolean) => {
@@ -99,6 +100,25 @@ export function SettingsScreen() {
         },
       ],
     );
+  };
+
+  const handleExport = async (format: 'json' | 'csv') => {
+    if (records.length === 0) {
+      Alert.alert('Nothing to export', 'Complete a workout first, then export your data.');
+      return;
+    }
+    const payload = format === 'json' ? toJSON(records) : toCSV(records);
+    try {
+      // React Native's built-in share sheet — hands the serialized data to
+      // whatever the user picks (Files, email, etc). No extra dependency, and
+      // it exercises the same export builders that back a future cloud sync.
+      await Share.share({
+        title: `RepCount export (${format.toUpperCase()})`,
+        message: payload,
+      });
+    } catch {
+      Alert.alert('Export failed', 'Could not open the share sheet. Please try again.');
+    }
   };
 
   const renderToggles = (toggles: ToggleConfig[]) =>
@@ -147,14 +167,72 @@ export function SettingsScreen() {
       <View style={{ marginTop: theme.spacing.xl }}>
         <SectionHeader
           title="Data"
-          subtitle="Everything is stored locally and never leaves this device."
+          subtitle="Everything is stored locally and never leaves this device unless you export it."
         />
-        <Button
-          label="Clear workout history"
-          icon="trash-outline"
-          variant="ghost"
-          onPress={handleClearHistory}
-        />
+        <Card style={styles.exportCard}>
+          <AppText variant="bodyStrong">Export</AppText>
+          <AppText variant="caption" color="textMuted" style={{ marginTop: 2 }}>
+            Save a full copy of your workout history.
+          </AppText>
+          <View style={styles.exportButtons}>
+            <Button
+              label="JSON"
+              icon="code-download-outline"
+              variant="secondary"
+              onPress={() => handleExport('json')}
+              style={styles.exportButton}
+            />
+            <Button
+              label="CSV"
+              icon="grid-outline"
+              variant="secondary"
+              onPress={() => handleExport('csv')}
+              style={styles.exportButton}
+            />
+          </View>
+
+          <View style={[styles.divider, { backgroundColor: theme.colors.border, marginLeft: 0 }]} />
+          <AppText variant="caption" color="textMuted">
+            Sync destinations
+          </AppText>
+          <View style={styles.targets}>
+            {SYNC_TARGETS.map((target) => (
+              <View
+                key={target.id}
+                style={[
+                  styles.targetChip,
+                  {
+                    backgroundColor: theme.colors.surfaceAlt,
+                    borderRadius: theme.radius.pill,
+                  },
+                ]}
+              >
+                <AppText variant="caption" color="textSecondary">
+                  {target.label}
+                </AppText>
+                <AppText
+                  variant="caption"
+                  style={{
+                    marginLeft: 6,
+                    color:
+                      target.status === 'ready' ? theme.colors.success : theme.colors.textMuted,
+                  }}
+                >
+                  {target.status === 'ready' ? '● ready' : '○ planned'}
+                </AppText>
+              </View>
+            ))}
+          </View>
+        </Card>
+
+        <View style={{ marginTop: theme.spacing.md }}>
+          <Button
+            label="Clear workout history"
+            icon="trash-outline"
+            variant="ghost"
+            onPress={handleClearHistory}
+          />
+        </View>
       </View>
 
       <View style={styles.footer}>
@@ -171,7 +249,17 @@ export function SettingsScreen() {
 
 const styles = StyleSheet.create({
   group: { paddingVertical: 0 },
-  divider: { height: StyleSheet.hairlineWidth, marginLeft: 52 },
+  divider: { height: StyleSheet.hairlineWidth, marginLeft: 52, marginVertical: 12 },
+  exportCard: { gap: 4 },
+  exportButtons: { flexDirection: 'row', gap: 12, marginTop: 12 },
+  exportButton: { flex: 1 },
+  targets: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 8 },
+  targetChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+  },
   footer: { marginTop: 40, alignItems: 'center' },
   footerHint: { marginTop: 2 },
 });
