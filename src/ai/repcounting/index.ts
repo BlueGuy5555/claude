@@ -1,8 +1,28 @@
-export { RepCounter } from './RepCounter';
-export { EXERCISE_CONFIGS } from './exercises';
+export { AngleCalculator } from './AngleCalculator';
+export { PoseAnalyzer } from './PoseAnalyzer';
+export {
+  Ema,
+  MovingAverage,
+  VelocityEstimator,
+  Confirmation,
+  TemporalFilter,
+} from './TemporalFilter';
+export type { TemporalFilterConfig, TemporalFilterResult } from './TemporalFilter';
+export { ExerciseStateMachine } from './ExerciseStateMachine';
+export type { RepFrame, StepResult } from './ExerciseStateMachine';
+export { ExerciseCounter } from './ExerciseCounter';
+export { PushupCounter, SquatCounter } from './counters';
+export { EXERCISE_DEFINITIONS } from './definitions';
+export { createCounter } from './factory';
+
 export type {
-  ExerciseConfig,
+  RepState,
   ExercisePhase,
+  PoseFeatures,
+  SignalContext,
+  ExerciseSignals,
+  StateMachineConfig,
+  ExerciseDefinition,
   RepUpdate,
-  RestZone,
+  RepCounterLike,
 } from './types';
