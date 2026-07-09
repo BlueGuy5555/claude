@@ -1,14 +1,15 @@
 import { Ionicons } from '@expo/vector-icons';
-import React from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import Animated, { FadeInDown, FadeInUp } from 'react-native-reanimated';
 
 import { AppLogo, AppText, Button, Card, IconBadge, ScreenContainer } from '@/components';
-import { APP } from '@/constants';
+import { APP, EXERCISES } from '@/constants';
+import { useHaptics } from '@/hooks';
 import type { RootStackScreenProps } from '@/navigation';
+import { loadPreferences, savePreferences } from '@/storage';
 import { useTheme } from '@/theme';
-
-type NavProp = RootStackScreenProps<'Home'>['navigation'];
+import type { ExerciseId } from '@/types';
 
 interface ActionTileProps {
   icon: React.ComponentProps<typeof Ionicons>['name'];
@@ -39,8 +40,75 @@ function ActionTile({ icon, title, subtitle, onPress }: ActionTileProps) {
   );
 }
 
+function ExerciseChip({
+  name,
+  icon,
+  selected,
+  onPress,
+}: {
+  name: string;
+  icon: React.ComponentProps<typeof Ionicons>['name'];
+  selected: boolean;
+  onPress: () => void;
+}) {
+  const theme = useTheme();
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityState={{ selected }}
+      onPress={onPress}
+      style={({ pressed }) => [
+        styles.chip,
+        {
+          backgroundColor: selected ? theme.colors.primary : theme.colors.surface,
+          borderColor: selected ? theme.colors.primary : theme.colors.border,
+          borderRadius: theme.radius.md,
+        },
+        pressed && styles.pressed,
+      ]}
+    >
+      <Ionicons
+        name={icon}
+        size={20}
+        color={selected ? theme.colors.onPrimary : theme.colors.primary}
+      />
+      <AppText
+        variant="caption"
+        style={{
+          marginTop: 6,
+          color: selected ? theme.colors.onPrimary : theme.colors.text,
+        }}
+      >
+        {name}
+      </AppText>
+    </Pressable>
+  );
+}
+
 export function HomeScreen({ navigation }: RootStackScreenProps<'Home'>) {
   const theme = useTheme();
+  const { selection } = useHaptics();
+  const [selected, setSelected] = useState<ExerciseId>(EXERCISES[0]!.id);
+
+  // Restore the exercise chosen last time.
+  useEffect(() => {
+    let cancelled = false;
+    loadPreferences().then((prefs) => {
+      if (!cancelled && prefs.lastExerciseId) setSelected(prefs.lastExerciseId);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const handleStart = () => {
+    void savePreferences({
+      lastExerciseId: selected,
+      hasCompletedOnboarding: true,
+      units: 'metric',
+    });
+    navigation.navigate('WorkoutSession', { exerciseId: selected });
+  };
 
   const tiles: ActionTileProps[] = [
     {
@@ -58,7 +126,7 @@ export function HomeScreen({ navigation }: RootStackScreenProps<'Home'>) {
     {
       icon: 'settings-outline',
       title: 'Settings',
-      subtitle: 'Vibration, sound and appearance',
+      subtitle: 'Vibration, sound, appearance and AI',
       onPress: () => navigation.navigate('Settings'),
     },
   ];
@@ -79,19 +147,41 @@ export function HomeScreen({ navigation }: RootStackScreenProps<'Home'>) {
         entering={FadeInDown.delay(120).duration(500)}
         style={{ marginTop: theme.spacing.xxl }}
       >
-        <Button
-          label="Start Workout"
-          icon="barbell-outline"
-          size="lg"
-          onPress={() => navigation.navigate('WorkoutSession')}
-        />
+        <AppText variant="subtitle" style={{ marginBottom: theme.spacing.md }}>
+          Choose an exercise
+        </AppText>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={{ gap: theme.spacing.sm, paddingRight: theme.spacing.xl }}
+        >
+          {EXERCISES.map((exercise) => (
+            <ExerciseChip
+              key={exercise.id}
+              name={exercise.name}
+              icon={exercise.icon}
+              selected={exercise.id === selected}
+              onPress={() => {
+                selection();
+                setSelected(exercise.id);
+              }}
+            />
+          ))}
+        </ScrollView>
+      </Animated.View>
+
+      <Animated.View
+        entering={FadeInDown.delay(200).duration(500)}
+        style={{ marginTop: theme.spacing.xl }}
+      >
+        <Button label="Start Workout" icon="barbell-outline" size="lg" onPress={handleStart} />
       </Animated.View>
 
       <View style={{ marginTop: theme.spacing.xl, gap: theme.spacing.md }}>
         {tiles.map((tile, index) => (
           <Animated.View
             key={tile.title}
-            entering={FadeInDown.delay(200 + index * 80).duration(500)}
+            entering={FadeInDown.delay(280 + index * 80).duration(500)}
           >
             <ActionTile {...tile} />
           </Animated.View>
@@ -107,5 +197,12 @@ const styles = StyleSheet.create({
   tile: { flexDirection: 'row', alignItems: 'center' },
   tileText: { flex: 1 },
   tileSubtitle: { marginTop: 2 },
+  chip: {
+    width: 92,
+    paddingVertical: 14,
+    paddingHorizontal: 8,
+    alignItems: 'center',
+    borderWidth: StyleSheet.hairlineWidth,
+  },
   pressed: { opacity: 0.85 },
 });

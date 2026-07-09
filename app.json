@@ -34,11 +34,12 @@
     },
     "plugins": [
       [
-        "expo-camera",
+        "react-native-vision-camera",
         {
-          "cameraPermission": "RepCount uses the camera to preview your workout. Video never leaves your device."
+          "cameraPermissionText": "RepCount uses the camera to count your reps on-device. Video is processed locally and never leaves your device."
         }
-      ]
+      ],
+      "react-native-fast-tflite"
     ]
   }
 }

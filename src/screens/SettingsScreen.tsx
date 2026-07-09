@@ -8,12 +8,13 @@ import {
   ScreenContainer,
   SectionHeader,
   SettingRow,
+  SettingSegment,
 } from '@/components';
 import { APP } from '@/constants';
 import { useSettings } from '@/context';
 import { useHaptics } from '@/hooks';
 import { clearHistory } from '@/storage';
-import type { Settings } from '@/types';
+import type { ConfidenceLevel, Settings } from '@/types';
 import { useTheme } from '@/theme';
 
 interface ToggleConfig {
@@ -23,12 +24,12 @@ interface ToggleConfig {
   description: string;
 }
 
-const TOGGLES: ToggleConfig[] = [
+const GENERAL_TOGGLES: ToggleConfig[] = [
   {
     key: 'vibration',
     icon: 'pulse-outline',
     label: 'Vibration',
-    description: 'Haptic feedback when you tap controls',
+    description: 'Haptic feedback on taps and on each counted rep',
   },
   {
     key: 'sound',
@@ -44,6 +45,33 @@ const TOGGLES: ToggleConfig[] = [
   },
 ];
 
+const AI_TOGGLES: ToggleConfig[] = [
+  {
+    key: 'showSkeleton',
+    icon: 'body-outline',
+    label: 'Skeleton overlay',
+    description: 'Draw the detected pose over the camera',
+  },
+  {
+    key: 'mirrorFrontCamera',
+    icon: 'camera-reverse-outline',
+    label: 'Mirror front camera',
+    description: 'Flip the front-camera preview selfie-style',
+  },
+  {
+    key: 'debugFps',
+    icon: 'speedometer-outline',
+    label: 'Show FPS',
+    description: 'Overlay the processing frame rate (debug)',
+  },
+];
+
+const CONFIDENCE_OPTIONS: readonly { value: ConfidenceLevel; label: string }[] = [
+  { value: 'low', label: 'Low' },
+  { value: 'medium', label: 'Medium' },
+  { value: 'high', label: 'High' },
+];
+
 export function SettingsScreen() {
   const theme = useTheme();
   const { settings, updateSetting } = useSettings();
@@ -51,7 +79,7 @@ export function SettingsScreen() {
 
   const handleToggle = (key: keyof Settings, value: boolean) => {
     selection();
-    updateSetting(key, value);
+    updateSetting(key, value as Settings[typeof key]);
   };
 
   const handleClearHistory = () => {
@@ -73,25 +101,48 @@ export function SettingsScreen() {
     );
   };
 
+  const renderToggles = (toggles: ToggleConfig[]) =>
+    toggles.map((toggle, index) => (
+      <View key={toggle.key}>
+        {index > 0 ? (
+          <View style={[styles.divider, { backgroundColor: theme.colors.border }]} />
+        ) : null}
+        <SettingRow
+          icon={toggle.icon}
+          label={toggle.label}
+          description={toggle.description}
+          value={settings[toggle.key] as boolean}
+          onValueChange={(value) => handleToggle(toggle.key, value)}
+        />
+      </View>
+    ));
+
   return (
     <ScreenContainer>
       <SectionHeader title="Preferences" />
-      <Card style={styles.group}>
-        {TOGGLES.map((toggle, index) => (
-          <View key={toggle.key}>
-            {index > 0 ? (
-              <View style={[styles.divider, { backgroundColor: theme.colors.border }]} />
-            ) : null}
-            <SettingRow
-              icon={toggle.icon}
-              label={toggle.label}
-              description={toggle.description}
-              value={settings[toggle.key]}
-              onValueChange={(value) => handleToggle(toggle.key, value)}
-            />
-          </View>
-        ))}
-      </Card>
+      <Card style={styles.group}>{renderToggles(GENERAL_TOGGLES)}</Card>
+
+      <View style={{ marginTop: theme.spacing.xl }}>
+        <SectionHeader
+          title="Pose detection"
+          subtitle="Rep counting runs entirely on-device."
+        />
+        <Card style={styles.group}>
+          {renderToggles(AI_TOGGLES)}
+          <View style={[styles.divider, { backgroundColor: theme.colors.border }]} />
+          <SettingSegment
+            icon="options-outline"
+            label="Confidence"
+            description="How sure the model must be before trusting a joint"
+            options={CONFIDENCE_OPTIONS}
+            value={settings.confidence}
+            onChange={(value) => {
+              selection();
+              updateSetting('confidence', value);
+            }}
+          />
+        </Card>
+      </View>
 
       <View style={{ marginTop: theme.spacing.xl }}>
         <SectionHeader

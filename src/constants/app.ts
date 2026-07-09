@@ -10,14 +10,14 @@ export const APP = {
 } as const;
 
 /**
- * The catalogue of exercises the app will support. Defined here (not fetched)
- * because the app is fully offline. Rep-counting logic arrives in a later
- * milestone; for now this drives menus and labels only.
+ * The catalogue of exercises the app can count. Defined here (not fetched)
+ * because the app is fully offline. Each id maps to joint-angle rep-counting
+ * logic in `src/ai/repcounting`.
  */
 export const EXERCISES: readonly Exercise[] = [
-  { id: 'squat', name: 'Squat', icon: 'body-outline' },
   { id: 'pushup', name: 'Push-up', icon: 'fitness-outline' },
-  { id: 'situp', name: 'Sit-up', icon: 'accessibility-outline' },
-  { id: 'jumping_jack', name: 'Jumping Jack', icon: 'walk-outline' },
+  { id: 'squat', name: 'Squat', icon: 'body-outline' },
+  { id: 'pullup', name: 'Pull-up', icon: 'barbell-outline' },
   { id: 'lunge', name: 'Lunge', icon: 'trending-up-outline' },
+  { id: 'jumping_jack', name: 'Jumping Jack', icon: 'walk-outline' },
 ] as const;

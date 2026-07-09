@@ -23,6 +23,7 @@ function HistoryRow({ item }: { item: WorkoutHistoryItem }) {
         <AppText variant="bodyStrong">{item.title}</AppText>
         <AppText variant="caption" color="textMuted" style={styles.rowMeta}>
           {item.relativeDate} · {item.durationLabel}
+          {item.caloriesLabel ? ` · ${item.caloriesLabel}` : ''}
         </AppText>
       </View>
       <View style={styles.reps}>
@@ -60,7 +61,7 @@ export function HistoryScreen({ navigation }: RootStackScreenProps<'History'>) {
             <Button
               label="Start a workout"
               icon="barbell-outline"
-              onPress={() => navigation.navigate('WorkoutSession')}
+              onPress={() => navigation.navigate('Home')}
             />
           }
         />
