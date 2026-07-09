@@ -3,42 +3,16 @@ import React, { useEffect, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import Animated, { FadeInDown, FadeInUp } from 'react-native-reanimated';
 
-import { AppLogo, AppText, Button, Card, IconBadge, ScreenContainer } from '@/components';
+import { AppText, Button, Card, IconBadge, ScreenContainer } from '@/components';
+import { ProgressBar } from '@/charts';
 import { APP, EXERCISES } from '@/constants';
-import { useHaptics } from '@/hooks';
+import { useDashboard, useGoals, useHaptics } from '@/hooks';
 import type { RootStackScreenProps } from '@/navigation';
 import { loadPreferences, savePreferences } from '@/storage';
+import { toHistoryItem } from '@/services';
 import { useTheme } from '@/theme';
-import type { ExerciseId } from '@/types';
-
-interface ActionTileProps {
-  icon: React.ComponentProps<typeof Ionicons>['name'];
-  title: string;
-  subtitle: string;
-  onPress: () => void;
-}
-
-function ActionTile({ icon, title, subtitle, onPress }: ActionTileProps) {
-  const theme = useTheme();
-  return (
-    <Pressable
-      accessibilityRole="button"
-      onPress={onPress}
-      style={({ pressed }) => [pressed && styles.pressed]}
-    >
-      <Card style={styles.tile}>
-        <IconBadge name={icon} />
-        <View style={[styles.tileText, { marginHorizontal: theme.spacing.md }]}>
-          <AppText variant="bodyStrong">{title}</AppText>
-          <AppText variant="caption" color="textMuted" style={styles.tileSubtitle}>
-            {subtitle}
-          </AppText>
-        </View>
-        <Ionicons name="chevron-forward" size={20} color={theme.colors.textMuted} />
-      </Card>
-    </Pressable>
-  );
-}
+import { GOAL_METRIC_META, GOAL_PERIOD_META, type ExerciseId } from '@/types';
+import { formatCalories, formatDuration, formatNumber } from '@/utils';
 
 function ExerciseChip({
   name,
@@ -85,9 +59,37 @@ function ExerciseChip({
   );
 }
 
+/** A compact metric shown inside the "Today" summary card. */
+function MiniStat({
+  icon,
+  value,
+  label,
+  tint,
+}: {
+  icon: React.ComponentProps<typeof Ionicons>['name'];
+  value: string;
+  label: string;
+  tint?: string;
+}) {
+  const theme = useTheme();
+  return (
+    <View style={styles.miniStat}>
+      <Ionicons name={icon} size={18} color={tint ?? theme.colors.primary} />
+      <AppText variant="subtitle" style={{ marginTop: 4 }}>
+        {value}
+      </AppText>
+      <AppText variant="caption" color="textMuted">
+        {label}
+      </AppText>
+    </View>
+  );
+}
+
 export function HomeScreen({ navigation }: RootStackScreenProps<'Home'>) {
   const theme = useTheme();
   const { selection } = useHaptics();
+  const { statistics, recent, hasData } = useDashboard();
+  const { progress } = useGoals();
   const [selected, setSelected] = useState<ExerciseId>(EXERCISES[0]!.id);
 
   // Restore the exercise chosen last time.
@@ -110,45 +112,70 @@ export function HomeScreen({ navigation }: RootStackScreenProps<'Home'>) {
     navigation.navigate('WorkoutSession', { exerciseId: selected });
   };
 
-  const tiles: ActionTileProps[] = [
-    {
-      icon: 'time-outline',
-      title: 'History',
-      subtitle: 'Review your past workouts',
-      onPress: () => navigation.navigate('History'),
-    },
-    {
-      icon: 'stats-chart-outline',
-      title: 'Statistics',
-      subtitle: 'Track your progress over time',
-      onPress: () => navigation.navigate('Statistics'),
-    },
-    {
-      icon: 'settings-outline',
-      title: 'Settings',
-      subtitle: 'Vibration, sound, appearance and AI',
-      onPress: () => navigation.navigate('Settings'),
-    },
-  ];
+  const primaryGoal = progress[0] ?? null;
+  const recentItem = recent ? toHistoryItem(recent) : null;
 
   return (
     <ScreenContainer>
-      <Animated.View entering={FadeInUp.duration(500)} style={styles.hero}>
-        <AppLogo size={88} />
-        <AppText variant="hero" style={{ marginTop: theme.spacing.lg }}>
-          {APP.name}
-        </AppText>
-        <AppText variant="body" color="textSecondary" center style={styles.tagline}>
-          {APP.tagline} — your data never leaves this device.
-        </AppText>
+      {/* Header */}
+      <Animated.View entering={FadeInUp.duration(450)} style={styles.header}>
+        <View>
+          <AppText variant="caption" color="textMuted">
+            {APP.name}
+          </AppText>
+          <AppText variant="headline">Today</AppText>
+        </View>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Settings"
+          hitSlop={8}
+          onPress={() => navigation.navigate('Settings')}
+        >
+          <IconBadge name="settings-outline" size={20} containerSize={40} />
+        </Pressable>
       </Animated.View>
 
+      {/* Today summary */}
+      <Animated.View entering={FadeInDown.delay(60).duration(450)}>
+        <Card style={{ marginTop: theme.spacing.lg }}>
+          <View style={styles.todayRow}>
+            <MiniStat
+              icon="repeat-outline"
+              value={formatNumber(statistics.repsToday)}
+              label="Reps"
+            />
+            <MiniStat
+              icon="flame-outline"
+              value={formatCalories(statistics.caloriesToday)}
+              label="Burned"
+              tint={theme.colors.warning}
+            />
+            <MiniStat
+              icon="time-outline"
+              value={formatDuration(statistics.durationTodaySec)}
+              label="Active"
+              tint={theme.colors.accent}
+            />
+          </View>
+          <View style={[styles.streakRow, { borderTopColor: theme.colors.border }]}>
+            <AppText variant="caption" color="textSecondary">
+              🔥 {statistics.currentStreakDays}-day streak
+            </AppText>
+            <AppText variant="caption" color="textMuted">
+              Best {statistics.longestStreakDays}d · {statistics.workoutsThisWeek} this week ·{' '}
+              {statistics.workoutsThisMonth} this month
+            </AppText>
+          </View>
+        </Card>
+      </Animated.View>
+
+      {/* Start a workout */}
       <Animated.View
-        entering={FadeInDown.delay(120).duration(500)}
-        style={{ marginTop: theme.spacing.xxl }}
+        entering={FadeInDown.delay(120).duration(450)}
+        style={{ marginTop: theme.spacing.xl }}
       >
         <AppText variant="subtitle" style={{ marginBottom: theme.spacing.md }}>
-          Choose an exercise
+          Start a workout
         </AppText>
         <ScrollView
           horizontal
@@ -168,32 +195,171 @@ export function HomeScreen({ navigation }: RootStackScreenProps<'Home'>) {
             />
           ))}
         </ScrollView>
+        <View style={{ marginTop: theme.spacing.lg }}>
+          <Button label="Start Workout" icon="barbell-outline" size="lg" onPress={handleStart} />
+        </View>
       </Animated.View>
 
-      <Animated.View
-        entering={FadeInDown.delay(200).duration(500)}
-        style={{ marginTop: theme.spacing.xl }}
-      >
-        <Button label="Start Workout" icon="barbell-outline" size="lg" onPress={handleStart} />
-      </Animated.View>
+      {/* Primary goal progress */}
+      {primaryGoal ? (
+        <Animated.View
+          entering={FadeInDown.delay(180).duration(450)}
+          style={{ marginTop: theme.spacing.xl }}
+        >
+          <Pressable accessibilityRole="button" onPress={() => navigation.navigate('Goals')}>
+            <Card>
+              <View style={styles.goalHeader}>
+                <AppText variant="bodyStrong">
+                  {GOAL_PERIOD_META[primaryGoal.goal.period].adjective}{' '}
+                  {GOAL_METRIC_META[primaryGoal.goal.metric].label.toLowerCase()} goal
+                </AppText>
+                <AppText variant="caption" color={primaryGoal.completed ? 'success' : 'textMuted'}>
+                  {primaryGoal.completed ? 'Complete 🎉' : `${primaryGoal.current}/${primaryGoal.target}`}
+                </AppText>
+              </View>
+              <View style={{ marginTop: theme.spacing.md }}>
+                <ProgressBar
+                  fraction={primaryGoal.fraction}
+                  color={primaryGoal.completed ? theme.colors.success : theme.colors.primary}
+                />
+              </View>
+            </Card>
+          </Pressable>
+        </Animated.View>
+      ) : null}
 
-      <View style={{ marginTop: theme.spacing.xl, gap: theme.spacing.md }}>
-        {tiles.map((tile, index) => (
-          <Animated.View
-            key={tile.title}
-            entering={FadeInDown.delay(280 + index * 80).duration(500)}
+      {/* Recent workout preview */}
+      {recentItem ? (
+        <Animated.View
+          entering={FadeInDown.delay(240).duration(450)}
+          style={{ marginTop: theme.spacing.xl }}
+        >
+          <View style={styles.sectionHeaderRow}>
+            <AppText variant="subtitle">Recent workout</AppText>
+            <Pressable accessibilityRole="button" onPress={() => navigation.navigate('History')}>
+              <AppText variant="caption" color="primary">
+                See all
+              </AppText>
+            </Pressable>
+          </View>
+          <Pressable
+            accessibilityRole="button"
+            onPress={() =>
+              navigation.navigate('SessionDetail', { sessionId: recentItem.id })
+            }
+            style={({ pressed }) => pressed && styles.pressed}
           >
-            <ActionTile {...tile} />
-          </Animated.View>
-        ))}
+            <Card style={styles.recentCard}>
+              <IconBadge name={recentItem.icon} />
+              <View style={[styles.recentText, { marginHorizontal: theme.spacing.md }]}>
+                <AppText variant="bodyStrong">{recentItem.title}</AppText>
+                <AppText variant="caption" color="textMuted">
+                  {recentItem.relativeDate} · {recentItem.durationLabel}
+                </AppText>
+              </View>
+              <View style={styles.recentReps}>
+                <AppText variant="subtitle" color="primary">
+                  {recentItem.totalReps}
+                </AppText>
+                <AppText variant="caption" color="textMuted">
+                  reps
+                </AppText>
+              </View>
+            </Card>
+          </Pressable>
+        </Animated.View>
+      ) : null}
+
+      {/* Navigation tiles */}
+      <View style={{ marginTop: theme.spacing.xl, gap: theme.spacing.md }}>
+        <NavTile
+          icon="stats-chart-outline"
+          title="Statistics"
+          subtitle="Trends, charts and records"
+          onPress={() => navigation.navigate('Statistics')}
+        />
+        <NavTile
+          icon="flag-outline"
+          title="Goals"
+          subtitle="Set targets and track progress"
+          onPress={() => navigation.navigate('Goals')}
+        />
+        <NavTile
+          icon="time-outline"
+          title="History"
+          subtitle={hasData ? 'Browse every past workout' : 'Your workouts will appear here'}
+          onPress={() => navigation.navigate('History')}
+        />
       </View>
     </ScreenContainer>
   );
 }
 
+function NavTile({
+  icon,
+  title,
+  subtitle,
+  onPress,
+}: {
+  icon: React.ComponentProps<typeof Ionicons>['name'];
+  title: string;
+  subtitle: string;
+  onPress: () => void;
+}) {
+  const theme = useTheme();
+  return (
+    <Pressable
+      accessibilityRole="button"
+      onPress={onPress}
+      style={({ pressed }) => [pressed && styles.pressed]}
+    >
+      <Card style={styles.tile}>
+        <IconBadge name={icon} />
+        <View style={[styles.tileText, { marginHorizontal: theme.spacing.md }]}>
+          <AppText variant="bodyStrong">{title}</AppText>
+          <AppText variant="caption" color="textMuted" style={styles.tileSubtitle}>
+            {subtitle}
+          </AppText>
+        </View>
+        <Ionicons name="chevron-forward" size={20} color={theme.colors.textMuted} />
+      </Card>
+    </Pressable>
+  );
+}
+
 const styles = StyleSheet.create({
-  hero: { alignItems: 'center', marginTop: 24 },
-  tagline: { marginTop: 8, maxWidth: 300 },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: 8,
+  },
+  todayRow: { flexDirection: 'row', justifyContent: 'space-between' },
+  miniStat: { flex: 1, alignItems: 'center' },
+  streakRow: {
+    marginTop: 16,
+    paddingTop: 12,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    flexWrap: 'wrap',
+    gap: 4,
+  },
+  goalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  sectionHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 12,
+  },
+  recentCard: { flexDirection: 'row', alignItems: 'center' },
+  recentText: { flex: 1 },
+  recentReps: { alignItems: 'center', minWidth: 44 },
   tile: { flexDirection: 'row', alignItems: 'center' },
   tileText: { flex: 1 },
   tileSubtitle: { marginTop: 2 },

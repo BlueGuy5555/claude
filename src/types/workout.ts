@@ -28,6 +28,12 @@ export interface WorkoutSet {
 /**
  * A completed (or in-progress) workout. `id` is a client-generated unique id;
  * timestamps are stored as ISO-8601 strings so they serialize cleanly to JSON.
+ *
+ * The fields below `notes` are *derived analytics* captured when the session is
+ * built. They are all optional so that (a) older records written before this
+ * milestone remain valid, and (b) the workout screen is free to record only
+ * what the pose layer happens to expose. Everything here is safe to compute
+ * from data the app already has — none of it reaches into pose detection.
  */
 export interface WorkoutSession {
   id: string;
@@ -39,4 +45,24 @@ export interface WorkoutSession {
   /** Estimated energy burned, in kilocalories. */
   calories?: number;
   notes?: string;
+
+  // --- Derived analytics (all optional / future-ready) ---
+  /** Mean seconds per rep across the session (duration ÷ reps as a fallback). */
+  avgRepSpeedSec?: number;
+  /** Shortest single-rep interval, in seconds. */
+  fastestRepSec?: number;
+  /** Longest single-rep interval, in seconds. */
+  slowestRepSec?: number;
+  /**
+   * Longest run of consecutive reps performed without a long pause between
+   * them (a rough "unbroken effort" measure). See `workoutService`.
+   */
+  bestRepStreak?: number;
+  /** Mean pose-confidence sampled on each counted rep, `[0, 1]`. */
+  avgConfidence?: number;
+  /**
+   * Offset in milliseconds from `startedAt` of each counted rep. Enables
+   * per-rep pace analysis and future form breakdowns without recomputation.
+   */
+  repOffsetsMs?: number[];
 }

@@ -4,29 +4,13 @@ import { StorageKeys } from './keys';
 import { readJSON, removeKey, writeJSON } from './storage';
 
 /**
- * Persistence for workout data. This module knows nothing about how sessions
- * are produced (that is business logic) — it only stores and retrieves them.
+ * Persistence for the *in-progress* session only.
+ *
+ * Completed workout history now lives behind the repository in `src/database`
+ * (versioned, migratable, sync-ready). The active session is deliberately kept
+ * here as a simple, unversioned scratch value: it is short-lived state used to
+ * resume a workout after an app restart, not durable history.
  */
-
-/** Completed sessions, always returned newest-first. */
-export async function loadHistory(): Promise<WorkoutSession[]> {
-  const history = await readJSON<WorkoutSession[]>(StorageKeys.workoutHistory);
-  return history ?? [];
-}
-
-/** Prepend a completed session to history and persist. Returns the new list. */
-export async function addSessionToHistory(
-  session: WorkoutSession,
-): Promise<WorkoutSession[]> {
-  const history = await loadHistory();
-  const next = [session, ...history];
-  await writeJSON(StorageKeys.workoutHistory, next);
-  return next;
-}
-
-export async function clearHistory(): Promise<void> {
-  await removeKey(StorageKeys.workoutHistory);
-}
 
 /** The in-progress session, if one was left unfinished. */
 export async function loadActiveSession(): Promise<WorkoutSession | null> {

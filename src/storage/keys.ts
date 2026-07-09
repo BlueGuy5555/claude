@@ -17,6 +17,8 @@ export const StorageKeys = {
   activeSession: `${PREFIX}/active-session`,
   /** Cached snapshot of aggregated statistics. */
   statistics: `${PREFIX}/statistics`,
+  /** User-configured goals. */
+  goals: `${PREFIX}/goals`,
 } as const;
 
 export type StorageKey = (typeof StorageKeys)[keyof typeof StorageKeys];

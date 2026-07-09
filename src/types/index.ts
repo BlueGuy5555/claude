@@ -3,3 +3,7 @@ export * from './workout';
 export * from './settings';
 export * from './preferences';
 export * from './statistics';
+export * from './analytics';
+export * from './goals';
+export * from './records';
+export * from './insights';
