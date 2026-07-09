@@ -1,0 +1,9 @@
+export { useHaptics } from './useHaptics';
+export { useWorkoutHistory } from './useWorkoutHistory';
+export { useStatistics } from './useStatistics';
+export { useAnalytics } from './useAnalytics';
+export { useDashboard } from './useDashboard';
+export { useGoals } from './useGoals';
+export { usePersonalRecords } from './usePersonalRecords';
+export { useInsights } from './useInsights';
+export { useSessionDetail } from './useSessionDetail';
