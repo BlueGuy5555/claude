@@ -1,15 +1,15 @@
 /**
  * Domain models for workouts.
  *
- * NOTE: rep counting / pose detection is intentionally NOT implemented in this
- * milestone. These types describe the shape of the data the storage layer is
- * ready to persist so later milestones can fill them in without a migration.
+ * Rep counting is performed on-device by the pose-detection layer (`src/ai`),
+ * which produces the `reps` recorded here. Timestamps are ISO-8601 strings so
+ * they serialize cleanly to JSON.
  */
 
 import type { IconName } from './icon';
 
-/** Exercises the app will eventually be able to count. */
-export type ExerciseId = 'squat' | 'pushup' | 'situp' | 'jumping_jack' | 'lunge';
+/** Exercises the app can count reps for. */
+export type ExerciseId = 'squat' | 'pushup' | 'pullup' | 'jumping_jack' | 'lunge';
 
 export interface Exercise {
   id: ExerciseId;
@@ -36,5 +36,7 @@ export interface WorkoutSession {
   durationSec: number;
   sets: WorkoutSet[];
   totalReps: number;
+  /** Estimated energy burned, in kilocalories. */
+  calories?: number;
   notes?: string;
 }

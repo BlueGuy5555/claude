@@ -7,4 +7,5 @@ export { IconBadge } from './IconBadge';
 export { ScreenContainer } from './ScreenContainer';
 export { SectionHeader } from './SectionHeader';
 export { SettingRow } from './SettingRow';
+export { SettingSegment } from './SettingSegment';
 export { StatCard } from './StatCard';

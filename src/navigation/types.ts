@@ -1,9 +1,12 @@
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 
-/** All routes in the root stack and their params (none carry params yet). */
+import type { ExerciseId } from '@/types';
+
+/** All routes in the root stack and their params. */
 export type RootStackParamList = {
   Home: undefined;
-  WorkoutSession: undefined;
+  /** The workout screen counts reps for the chosen exercise. */
+  WorkoutSession: { exerciseId: ExerciseId };
   History: undefined;
   Statistics: undefined;
   Settings: undefined;

@@ -1,6 +1,6 @@
 import { EXERCISES } from '@/constants';
 import type { ExerciseId, IconName, WorkoutSession } from '@/types';
-import { formatDuration, formatRelativeDate } from '@/utils';
+import { createId, formatDuration, formatRelativeDate } from '@/utils';
 
 /** A workout session shaped for direct rendering in a list row. */
 export interface WorkoutHistoryItem {
@@ -9,6 +9,8 @@ export interface WorkoutHistoryItem {
   relativeDate: string;
   durationLabel: string;
   totalReps: number;
+  /** e.g. "42 kcal", or null when not recorded. */
+  caloriesLabel: string | null;
   /** Ionicons glyph representing the first exercise of the session. */
   icon: IconName;
 }
@@ -16,6 +18,48 @@ export interface WorkoutHistoryItem {
 /** Resolve a display name for an exercise id, falling back to the raw id. */
 export function exerciseName(id: ExerciseId): string {
   return EXERCISES.find((e) => e.id === id)?.name ?? id;
+}
+
+/**
+ * Rough kilocalories burned per repetition. These are deliberately simple
+ * per-rep estimates (not a full MET model) — enough for on-device tracking
+ * without any external data.
+ */
+const KCAL_PER_REP: Record<ExerciseId, number> = {
+  pushup: 0.32,
+  squat: 0.32,
+  pullup: 1.0,
+  lunge: 0.35,
+  jumping_jack: 0.2,
+};
+
+/** Estimate energy burned for a set, rounded to one decimal. */
+export function estimateCalories(exerciseId: ExerciseId, reps: number): number {
+  return Math.round(reps * KCAL_PER_REP[exerciseId] * 10) / 10;
+}
+
+export interface CompletedWorkout {
+  exerciseId: ExerciseId;
+  reps: number;
+  startedAt: Date;
+  endedAt: Date;
+}
+
+/** Assemble a persistable session from a finished single-exercise workout. */
+export function buildSession(workout: CompletedWorkout): WorkoutSession {
+  const durationSec = Math.max(
+    0,
+    Math.round((workout.endedAt.getTime() - workout.startedAt.getTime()) / 1000),
+  );
+  return {
+    id: createId('workout'),
+    startedAt: workout.startedAt.toISOString(),
+    endedAt: workout.endedAt.toISOString(),
+    durationSec,
+    sets: [{ exerciseId: workout.exerciseId, reps: workout.reps }],
+    totalReps: workout.reps,
+    calories: estimateCalories(workout.exerciseId, workout.reps),
+  };
 }
 
 function exerciseIcon(id: ExerciseId): IconName {
@@ -44,6 +88,8 @@ export function toHistoryItem(session: WorkoutSession): WorkoutHistoryItem {
     relativeDate: formatRelativeDate(session.startedAt),
     durationLabel: formatDuration(session.durationSec),
     totalReps: session.totalReps,
+    caloriesLabel:
+      session.calories != null ? `${Math.round(session.calories)} kcal` : null,
     icon: firstExercise ? exerciseIcon(firstExercise) : 'barbell-outline',
   };
 }
